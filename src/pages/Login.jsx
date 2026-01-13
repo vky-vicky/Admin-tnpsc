@@ -97,6 +97,15 @@ const Login = () => {
             {loading ? 'Authenticating...' : 'Sign In'}
           </button>
         </form>
+
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => navigate('/register-admin')}
+            className="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 font-medium transition-colors"
+          >
+            Need to create an admin account? <span className="font-bold">Register here</span>
+          </button>
+        </div>
       </div>
     </div>
   );

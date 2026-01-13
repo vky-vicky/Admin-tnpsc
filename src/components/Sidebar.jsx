@@ -107,7 +107,11 @@ const Sidebar = ({ isOpen, onClose }) => {
         {/* User Card / Logout */}
         <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 transition-colors">
           <button 
-             onClick={() => navigate('/')}
+             onClick={() => {
+               localStorage.removeItem('admin_token');
+               localStorage.removeItem('admin_user');
+               navigate('/');
+             }}
              className="flex items-center gap-3 w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-red-400 hover:text-red-600 dark:hover:text-red-400 transition-all text-sm group shadow-sm hover:shadow-md"
           >
              <svg className="w-5 h-5 text-slate-400 group-hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>

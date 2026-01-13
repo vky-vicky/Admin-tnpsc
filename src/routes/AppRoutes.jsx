@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Home from '../pages/Home';
 import Login from '../pages/Login';
+import RegisterAdmin from '../pages/RegisterAdmin';
 import Dashboard from '../pages/Dashboard';
 import UsersList from '../pages/users/UsersList';
 import StudyMaterials from '../pages/content/StudyMaterials';
@@ -17,6 +18,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={<Login />} />
+      <Route path="/register-admin" element={<RegisterAdmin />} />
       
       {/* Protected/Dashboard Routes */}
       <Route path="/dashboard" element={<DashboardLayout />}>
