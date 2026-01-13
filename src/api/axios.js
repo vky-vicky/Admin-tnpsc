@@ -1,8 +1,10 @@
 import axios from 'axios';
 
 // Create axios instance with default config
+const isProduction = import.meta.env.PROD;
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
+  // Use /api proxy for both local and production for consistency
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   },

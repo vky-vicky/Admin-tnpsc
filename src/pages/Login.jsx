@@ -46,7 +46,21 @@ const Login = () => {
         setError('Login successful but no token received.');
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Invalid email or password');
+      console.error('Login error:', err);
+      const errorData = err.response?.data;
+      
+      if (errorData?.detail) {
+        if (typeof errorData.detail === 'string') {
+          setError(errorData.detail);
+        } else if (Array.isArray(errorData.detail)) {
+          // FastAPI often returns detail as an array of error objects
+          setError(errorData.detail[0]?.msg || 'Validation error occurred');
+        } else {
+          setError('An error occurred during sign in');
+        }
+      } else {
+        setError(err.response?.data?.message || 'Invalid email or password');
+      }
     } finally {
       setLoading(false);
     }
