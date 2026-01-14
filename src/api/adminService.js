@@ -3,6 +3,7 @@ import api from './axios';
 export const adminService = {
   // Authentication
   login: (email, password) => api.post('/auth/login', { email, password }),
+  register: (userData) => api.post('/auth/register', userData),
 
   // User Management
   getUsers: () => api.get('/users/'),

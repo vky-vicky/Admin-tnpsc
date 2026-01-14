@@ -4,7 +4,9 @@ import axios from 'axios';
 const isProduction = import.meta.env.PROD;
 const api = axios.create({
   // Use /api proxy for both local and production for consistency
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  // In production, always use /api to let Vercel rewrites handle the proxying to HTTP backend
+  // This avoids Mixed Content errors (HTTPS frontend -> HTTP backend blocked by browser)
+  baseURL: import.meta.env.PROD ? '/api' : (import.meta.env.VITE_API_BASE_URL || '/api'),
   headers: {
     'Content-Type': 'application/json',
   },

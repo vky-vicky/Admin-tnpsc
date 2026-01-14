@@ -30,38 +30,26 @@ const RegisterAdmin = () => {
 
     try {
       // Step 1: Register the admin user
-      const registerResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
-      });
-
-      const registerData = await registerResponse.json();
-
-      if (!registerResponse.ok) {
-        toast.error('Registration Failed', registerData.detail || 'Unable to create admin user');
-        setLoading(false);
-        return;
-      }
+      const registerResponse = await adminService.register(formData);
+      
+      // Axios response directly contains data properly handled by interceptor
+      // If we need to check specific success condition, usually axios throws on error (non-2xx)
+      // unless validateStatus is changed. Our interceptor returns response.data or rejects.
+      // However, we need to handle the structure.
+      
+      // Based on Login.jsx, adminService returns the data directly or the response object.
+      // Let's assume standard behavior:
+      
+      const registerData = registerResponse; // Interceptor returns response.data usually
 
       // Step 2: Automatically log in the user
-      const loginResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password
-        })
-      });
+      const loginResponse = await adminService.login(formData.email, formData.password);
+      
+      const loginData = loginResponse; // Interceptor returns response.data
+      
+      const token = loginData.access_token || loginData.token || loginData.data?.token;
 
-      const loginData = await loginResponse.json();
-
-      if (loginResponse.ok) {
-        const token = loginData.access_token || loginData.token || loginData.data?.token;
+      if (token) {
         const userData = loginData.user || loginData.data?.user || { email: formData.email, name: formData.name, role: 'admin' };
 
         // Store credentials
