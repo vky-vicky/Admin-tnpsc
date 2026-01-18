@@ -4,6 +4,7 @@ import { adminService } from '../../api/adminService';
 import Pagination from '../../components/Pagination';
 import BaseModal from '../../components/Modal';
 import { useToast } from '../../context/ToastContext';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const SkeletonCard = () => (
   <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 relative overflow-hidden shadow-sm">
@@ -142,6 +143,14 @@ const Exams = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedExam, setSelectedExam] = useState(null); // For instruction preview
   
+  // Delete Confirmation State
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    id: null,
+    title: ''
+  });
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
@@ -221,15 +230,26 @@ const Exams = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm(`Are you sure you want to delete this ${examType.toLowerCase()}?`)) {
-      try {
-        await adminService.manageExams.deleteReal(id);
-        setExams(exams.filter(e => e.id !== id));
-        toast.success('Exam Deleted', 'The exam and its associated questions have been removed.');
-      } catch (err) {
-        toast.error('Deletion Failed', 'The server could not process the delete request for this exam.');
-      }
+  const openDeleteModal = (id, title) => {
+    setDeleteModal({
+      isOpen: true,
+      id,
+      title
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    const { id, title } = deleteModal;
+    setDeleteLoading(true);
+    try {
+      await adminService.manageExams.deleteReal(id);
+      setExams(exams.filter(e => e.id !== id));
+      toast.success('Exam Deleted', `${title} has been permanently removed.`);
+      setDeleteModal({ isOpen: false, id: null, title: '' });
+    } catch (err) {
+      toast.error('Deletion Failed', 'The server could not process the delete request for this exam.');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -354,7 +374,7 @@ const Exams = () => {
                                     {examType}
                                 </span>
                                 <div className="flex gap-1">
-                                    <button onClick={() => handleDelete(exam.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
+                                    <button onClick={() => openDeleteModal(exam.id, exam.exam_name)} className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                     </button>
                                 </div>
@@ -567,6 +587,17 @@ const Exams = () => {
             </div>
         </div>
       )}
+
+      {/* Professional Deletion Modal */}
+      <ConfirmModal 
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}
+        onConfirm={handleConfirmDelete}
+        loading={deleteLoading}
+        title={`Delete ${examType.replace('_', ' ')}`}
+        message={`Are you sure you want to delete "${deleteModal.title}"? All associated questions and student data for this exam will be permanently purged.`}
+        confirmText="Yes, Permanently Delete"
+      />
     </div>
   );
 };

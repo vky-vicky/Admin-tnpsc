@@ -4,6 +4,7 @@ import { adminService } from '../../api/adminService';
 import { useToast } from '../../context/ToastContext';
 
 import Pagination from '../../components/Pagination';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const StudyMaterials = () => {
   const { toast } = useToast();
@@ -29,6 +30,14 @@ const StudyMaterials = () => {
     uploaded_by: 1, 
     file: null
   });
+
+  // Delete Confirmation State
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    id: null,
+    title: ''
+  });
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     if (searchParam) {
@@ -125,19 +134,30 @@ const StudyMaterials = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Delete this material?')) {
-      try {
-        await adminService.materials.deleteStudy(id);
-        if (view === 'grouped') {
-           fetchData(); // Refresh grouped
-        } else {
-           setMaterials(materials.filter(m => m.id !== id));
-        }
-        toast.success('Material Deleted', 'The educational asset has been permanently removed.');
-      } catch (err) {
-        toast.error('Delete Failed', 'The server could not process the deletion request.');
+  const openDeleteModal = (id, title) => {
+    setDeleteModal({
+      isOpen: true,
+      id,
+      title
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    const { id, title } = deleteModal;
+    setDeleteLoading(true);
+    try {
+      await adminService.materials.deleteStudy(id);
+      if (view === 'grouped') {
+         fetchData(); // Refresh grouped
+      } else {
+         setMaterials(materials.filter(m => m.id !== id));
       }
+      toast.success('Material Deleted', `${title} has been permanently removed.`);
+      setDeleteModal({ isOpen: false, id: null, title: '' });
+    } catch (err) {
+      toast.error('Delete Failed', 'The server could not process the deletion request.');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -280,9 +300,14 @@ const StudyMaterials = () => {
                         {items.slice(0, 3).map(item => (
                             <div key={item.id} className="flex items-center justify-between group/item">
                                 <span className="text-sm font-bold text-slate-600 dark:text-slate-400 truncate max-w-[150px]">{item.title}</span>
-                                <button onClick={() => handleDownload(item.id, item.title)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-blue-500 transition-all">
-                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                                </button>
+                                <div className="flex gap-1">
+                                    <button onClick={() => handleDownload(item.id, item.title)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-blue-500 transition-all" title="Download">
+                                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                    </button>
+                                    <button onClick={() => openDeleteModal(item.id, item.title)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-red-500 transition-all" title="Delete">
+                                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
+                                </div>
                             </div>
                         ))}
                         {items.length > 3 && (
@@ -334,9 +359,9 @@ const StudyMaterials = () => {
                         <button onClick={() => handleDownload(m.id, m.title)} className="p-3 bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 rounded-xl transition-all" title="Download">
                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                         </button>
-                        <button onClick={() => handleDelete(m.id)} className="p-3 bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:bg-red-600 hover:text-white dark:hover:bg-red-600 rounded-xl transition-all" title="Delete">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
+                         <button onClick={() => openDeleteModal(m.id, m.title)} className="p-3 bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:bg-red-600 hover:text-white dark:hover:bg-red-600 rounded-xl transition-all" title="Delete">
+                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                         </button>
                       </div>
                     </td>
                   </tr>
@@ -355,6 +380,17 @@ const StudyMaterials = () => {
           </div>
         </div>
       )}
+
+      {/* Professional Deletion Modal */}
+      <ConfirmModal 
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}
+        onConfirm={handleConfirmDelete}
+        loading={deleteLoading}
+        title="Confirm Deletion"
+        message={`Are you sure you want to delete "${deleteModal.title}"? This educational resource will be removed from all student platforms.`}
+        confirmText="Yes, Delete"
+      />
     </div>
   );
 };

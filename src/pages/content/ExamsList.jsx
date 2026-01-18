@@ -1,15 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../api/adminService';
+import ConfirmModal from '../../components/ConfirmModal';
+import { useToast } from '../../context/ToastContext';
 
 const ExamsList = () => {
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  // Deletion State
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    id: null,
+    title: ''
+  });
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     const fetchExams = async () => {
       try {
-        const data = await adminService.manageExams.list();
-        setExams(Array.isArray(data) ? data : (data.exams || []));
+        const data = await adminService.manageExams.listUpcoming();
+        setExams(Array.isArray(data) ? data : (data.exams || data.data || []));
         setLoading(false);
       } catch (error) {
         console.error("Failed to fetch exams", error);
@@ -19,14 +30,26 @@ const ExamsList = () => {
     fetchExams();
   }, []);
 
-  const handleDelete = async (id) => {
-    if(window.confirm('Are you sure you want to delete this exam?')) {
-      try {
-        await adminService.manageExams.delete(id);
-        setExams(exams.filter(e => e.id !== id));
-      } catch (err) {
-        alert('Failed to delete exam');
-      }
+  const openDeleteModal = (id, title) => {
+    setDeleteModal({
+      isOpen: true,
+      id,
+      title
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    const { id, title } = deleteModal;
+    setDeleteLoading(true);
+    try {
+      await adminService.manageExams.deleteNotification(id);
+      setExams(exams.filter(e => e.id !== id));
+      toast.success('Deleted', `${title} has been removed.`);
+      setDeleteModal({ isOpen: false, id: null, title: '' });
+    } catch (err) {
+      toast.error('Deletion Failed', 'Request could not be completed.');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -56,14 +79,24 @@ const ExamsList = () => {
                 <td className="px-6 py-4 text-slate-600 dark:text-slate-400">
                   {new Date(exam.exam_date).toLocaleDateString()}
                 </td>
-                <td className="px-6 py-4 text-right">
-                   <button onClick={() => handleDelete(exam.id)} className="text-red-500 hover:text-red-700">Delete</button>
-                </td>
+                 <td className="px-6 py-4 text-right">
+                    <button onClick={() => openDeleteModal(exam.id, exam.exam_name)} className="text-red-500 hover:text-red-700 font-bold uppercase text-[10px] tracking-widest transition-colors">Delete</button>
+                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      <ConfirmModal 
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}
+        onConfirm={handleConfirmDelete}
+        loading={deleteLoading}
+        title="Delete Notification"
+        message={`Are you sure you want to delete the notification for "${deleteModal.title}"?`}
+        confirmText="Confirm Delete"
+      />
     </div>
   );
 };

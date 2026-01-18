@@ -1,10 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../api/adminService';
+import { useToast } from '../../context/ToastContext';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const Notifications = () => {
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('list'); // 'list', 'broadcast', 'exam-notify'
+  const { toast } = useToast();
+
+  // Deletion State
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    id: null,
+    title: ''
+  });
+  const [deleteLoading, setDeleteLoading] = useState(false);
   
   // Broadcast State
   const [broadcast, setBroadcast] = useState({
@@ -43,12 +54,12 @@ const Notifications = () => {
     try {
       console.log("Sending broadcast:", broadcast);
       await adminService.broadcastMessage(broadcast);
-      alert('Broadcast message sent successfully!');
+      toast.success('Broadcast Sent', 'Your message has been delivered to all users.');
       setBroadcast({ title: '', message: '', target: 'all' });
       setView('list');
     } catch (err) {
       console.error("Broadcast failed:", err);
-      alert('Failed to send broadcast. Check console for details.');
+      toast.error('Broadcast Failed', 'Check network or console for details.');
     }
   };
 
@@ -56,23 +67,35 @@ const Notifications = () => {
     e.preventDefault();
     try {
       await adminService.manageExams.createNotification(examNotify);
-      alert('Exam notification created!');
+      toast.success('Alert Created', 'Exam notification has been published.');
       setExamNotify({ exam_name: '', exam_date: '', exam_type_slug: '', description: '', is_active: true });
       fetchExams();
       setView('list');
     } catch (err) {
-      alert('Failed to create exam notification');
+      toast.error('Creation Failed', 'Could not save exam notification.');
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Delete this notification?')) {
-      try {
-        await adminService.manageExams.deleteNotification(id);
-        setExams(exams.filter(e => e.id !== id));
-      } catch (err) {
-        alert('Delete failed');
-      }
+  const openDeleteModal = (id, title) => {
+    setDeleteModal({
+      isOpen: true,
+      id,
+      title
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    const { id, title } = deleteModal;
+    setDeleteLoading(true);
+    try {
+      await adminService.manageExams.deleteNotification(id);
+      setExams(exams.filter(e => e.id !== id));
+      toast.success('Deleted', `${title} alert has been removed.`);
+      setDeleteModal({ isOpen: false, id: null, title: '' });
+    } catch (err) {
+      toast.error('Deletion Failed', 'Could not remove notification.');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -165,7 +188,7 @@ const Notifications = () => {
                        </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button onClick={() => handleDelete(item.id)} className="text-red-500 hover:text-red-700 p-2"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                      <button onClick={() => openDeleteModal(item.id, item.exam_name)} className="text-red-500 hover:text-red-700 p-2"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                     </td>
                   </tr>
                 ))
@@ -174,6 +197,16 @@ const Notifications = () => {
           </table>
         </div>
       )}
+
+      <ConfirmModal 
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}
+        onConfirm={handleConfirmDelete}
+        loading={deleteLoading}
+        title="Delete Notification"
+        message={`Are you sure you want to delete the notification for "${deleteModal.title}"?`}
+        confirmText="Yes, Remove"
+      />
     </div>
   );
 };

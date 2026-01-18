@@ -1,9 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../api/adminService';
+import ConfirmModal from '../../components/ConfirmModal';
+import { useToast } from '../../context/ToastContext';
 
 const MaterialsList = () => {
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  // Delete Confirmation State
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    id: null,
+    title: '',
+    type: ''
+  });
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     const fetchMaterials = async () => {
@@ -27,15 +39,29 @@ const MaterialsList = () => {
     fetchMaterials();
   }, []);
 
-  const handleDelete = async (id, type) => {
-    if(window.confirm('Delete this material?')) {
-      try {
-        if(type === 'Study') await adminService.materials.deleteStudy(id);
-        else await adminService.materials.deleteResource(id);
-        setMaterials(materials.filter(m => m.id !== id));
-      } catch (err) {
-        alert('Failed to delete');
-      }
+  const openDeleteModal = (id, title, type) => {
+    setDeleteModal({
+      isOpen: true,
+      id,
+      title,
+      type
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    const { id, title, type } = deleteModal;
+    setDeleteLoading(true);
+    try {
+      if(type === 'Study') await adminService.materials.deleteStudy(id);
+      else await adminService.materials.deleteResource(id);
+      
+      setMaterials(materials.filter(m => m.id !== id));
+      toast.success('Material Deleted', `${title} has been permanently removed.`);
+      setDeleteModal({ isOpen: false, id: null, title: '', type: '' });
+    } catch (err) {
+      toast.error('Delete Failed', 'The server could not process the deletion request.');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -66,13 +92,23 @@ const MaterialsList = () => {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <button onClick={() => handleDelete(item.id, item.type)} className="text-red-500 hover:text-red-700">Delete</button>
+                  <button onClick={() => openDeleteModal(item.id, item.title, item.type)} className="text-red-500 hover:text-red-700 font-bold uppercase text-[10px] tracking-widest transition-colors">Delete</button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      <ConfirmModal 
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}
+        onConfirm={handleConfirmDelete}
+        loading={deleteLoading}
+        title="Delete Material"
+        message={`Are you sure you want to delete "${deleteModal.title}"? This will permanently remove the ${deleteModal.type?.toLowerCase()} material.`}
+        confirmText="Confirm Delete"
+      />
     </div>
   );
 };

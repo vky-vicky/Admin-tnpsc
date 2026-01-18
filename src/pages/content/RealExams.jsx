@@ -2,12 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { adminService } from '../../api/adminService';
 
 import Pagination from '../../components/Pagination';
+import ConfirmModal from '../../components/ConfirmModal';
+import { useToast } from '../../context/ToastContext';
 
 const RealExams = () => {
   const [exams, setExams] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('list'); // 'list' or 'create'
+  const { toast } = useToast();
+
+  // Delete Confirmation State
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    id: null,
+    title: ''
+  });
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -60,7 +71,7 @@ const RealExams = () => {
       // Validate materials
       const validMaterials = formData.materials.filter(m => m.material_id !== '');
       if (validMaterials.length === 0) {
-        alert('Please add at least one material');
+        toast.error('Missing Information', 'Please add at least one study material source.');
         return;
       }
 
@@ -73,7 +84,7 @@ const RealExams = () => {
       };
 
       await adminService.manageExams.createReal(payload);
-      alert('Real Exam created successfully!');
+      toast.success('Exam Published', 'The real exam attempt has been successfully created.');
       setView('list');
       fetchExams();
     } catch (err) {
@@ -111,18 +122,30 @@ const RealExams = () => {
           errorMessage = JSON.stringify(err);
       }
       
-      alert('Error creating exam:\n' + errorMessage);
+      toast.error('Publishing Failed', errorMessage);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this exam?')) {
-      try {
-        await adminService.manageExams.deleteReal(id);
-        setExams(exams.filter(e => e.id !== id));
-      } catch (err) {
-        alert('Failed to delete exam');
-      }
+  const openDeleteModal = (id, title) => {
+    setDeleteModal({
+      isOpen: true,
+      id,
+      title
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    const { id, title } = deleteModal;
+    setDeleteLoading(true);
+    try {
+      await adminService.manageExams.deleteReal(id);
+      setExams(exams.filter(e => e.id !== id));
+      toast.success('Exam Deleted', `${title} has been permanently removed.`);
+      setDeleteModal({ isOpen: false, id: null, title: '' });
+    } catch (err) {
+      toast.error('Delete Failed', 'The server could not process the deletion request.');
+    } finally {
+      setDeleteLoading(false);
     }
   };
   
@@ -327,7 +350,7 @@ const RealExams = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button onClick={() => handleDelete(exam.id)} className="text-red-500 hover:text-red-700 p-2 opacity-100 transition-opacity">
+                    <button onClick={() => openDeleteModal(exam.id, exam.exam_name)} className="text-red-500 hover:text-red-700 p-2 opacity-100 transition-opacity">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                   </td>
@@ -348,6 +371,17 @@ const RealExams = () => {
           )}
         </div>
       )}
+
+      {/* Professional Deletion Modal */}
+      <ConfirmModal 
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}
+        onConfirm={handleConfirmDelete}
+        loading={deleteLoading}
+        title="Delete Real Exam"
+        message={`Are you sure you want to delete "${deleteModal.title}"? All associated student attempts and question configurations will be lost.`}
+        confirmText="Confirm Delete"
+      />
     </div>
   );
 };

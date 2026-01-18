@@ -3,6 +3,7 @@ import { adminService } from '../../api/adminService';
 import { useToast } from '../../context/ToastContext';
 
 import Pagination from '../../components/Pagination';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const ResourceMaterials = () => {
   const { toast } = useToast();
@@ -19,6 +20,14 @@ const ResourceMaterials = () => {
     category: '',
     file: null
   });
+
+  // Delete Confirmation State
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    id: null,
+    title: ''
+  });
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     fetchMaterials();
@@ -62,15 +71,26 @@ const ResourceMaterials = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Delete this resource?')) {
-      try {
-        await adminService.materials.deleteResource(id);
-        setMaterials(materials.filter(m => m.id !== id));
-        toast.success('Resource Deleted', 'The file has been permanently removed from the system.');
-      } catch (err) {
-        toast.error('Delete Failed', 'The server could not process the deletion request.');
-      }
+  const openDeleteModal = (id, title) => {
+    setDeleteModal({
+      isOpen: true,
+      id,
+      title
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    const { id, title } = deleteModal;
+    setDeleteLoading(true);
+    try {
+      await adminService.materials.deleteResource(id);
+      setMaterials(materials.filter(m => m.id !== id));
+      toast.success('Resource Deleted', `${title} has been permanently removed.`);
+      setDeleteModal({ isOpen: false, id: null, title: '' });
+    } catch (err) {
+      toast.error('Delete Failed', 'The server could not process the deletion request.');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -127,7 +147,7 @@ const ResourceMaterials = () => {
                     <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{m.category || 'General'}</td>
                     <td className="px-6 py-4 text-sm text-slate-500">{new Date(m.uploaded_at).toLocaleDateString()}</td>
                     <td className="px-6 py-4 text-right">
-                      <button onClick={() => handleDelete(m.id)} className="text-red-500 hover:text-red-700 p-2">
+                      <button onClick={() => openDeleteModal(m.id, m.title)} className="text-red-500 hover:text-red-700 p-2">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                       </button>
                     </td>
@@ -149,6 +169,17 @@ const ResourceMaterials = () => {
           )}
         </div>
       )}
+
+      {/* Professional Deletion Modal */}
+      <ConfirmModal 
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}
+        onConfirm={handleConfirmDelete}
+        loading={deleteLoading}
+        title="Delete Resource"
+        message={`Are you sure you want to delete "${deleteModal.title}"? This general resource will be removed from the public repository.`}
+        confirmText="Yes, Delete"
+      />
     </div>
   );
 };

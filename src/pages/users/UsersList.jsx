@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../api/adminService';
 import Pagination from '../../components/Pagination';
+import ConfirmModal from '../../components/ConfirmModal';
+import { useToast } from '../../context/ToastContext';
 
 const UsersList = () => {
   const [users, setUsers] = useState([]);
@@ -10,6 +12,14 @@ const UsersList = () => {
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const { toast } = useToast();
+
+  // Deletion State
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    id: null,
+    title: ''
+  });
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -29,13 +39,23 @@ const UsersList = () => {
   const handleRoleChange = async (userId, newRole) => {
     // await adminService.updateUserRole(userId, newRole);
     setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
+    toast.success('Role Updated', `User role changed to ${newRole}.`);
   };
 
-  const handleDelete = async (userId) => {
-    if(window.confirm('Are you sure you want to delete this user?')) {
-        // await adminService.deleteUser(userId);
-        setUsers(users.filter(u => u.id !== userId));
-    }
+  const openDeleteModal = (id, title) => {
+    setDeleteModal({
+      isOpen: true,
+      id,
+      title
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    const { id, title } = deleteModal;
+    // await adminService.deleteUser(id);
+    setUsers(users.filter(u => u.id !== id));
+    toast.success('User Deleted', `${title} has been removed from the platform.`);
+    setDeleteModal({ isOpen: false, id: null, title: '' });
   };
 
   // Filter and Pagination Logic
@@ -94,11 +114,11 @@ const UsersList = () => {
                 </td>
                 <td className="px-6 py-4 text-right space-x-2">
                   <button 
-                     onClick={() => {
+                      onClick={() => {
                         adminService.manageExams.getPerformanceAnalysis(user.id)
-                          .then(res => alert(`User Performance:\nAccuracy: ${res.data.overall_summary.accuracy_percentage}%\nQuestions Analyzed: ${res.data.total_questions_analyzed}`))
-                          .catch(() => alert('No performance data available for this user.'));
-                     }}
+                          .then(res => toast.info(`Performance Analysis`, `Accuracy: ${res.data.overall_summary.accuracy_percentage}% | Questions: ${res.data.total_questions_analyzed}`))
+                          .catch(() => toast.error('Analysis Unavailable', 'No performance data for this user.'));
+                      }}
                      className="text-emerald-600 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 text-sm font-medium"
                   >
                     Analysis
@@ -110,7 +130,7 @@ const UsersList = () => {
                     {user.role === 'admin' ? 'Demote' : 'Promote'}
                   </button>
                   <button 
-                     onClick={() => handleDelete(user.id)}
+                     onClick={() => openDeleteModal(user.id, user.name)}
                      className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium"
                   >
                     Delete
@@ -127,6 +147,15 @@ const UsersList = () => {
         totalItems={filteredUsers.length} 
         currentPage={currentPage} 
         onPageChange={setCurrentPage} 
+      />
+
+      <ConfirmModal 
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}
+        onConfirm={handleConfirmDelete}
+        title="Delete User"
+        message={`Are you sure you want to delete "${deleteModal.title}"? This will permanently remove their account and all associated progress data.`}
+        confirmText="Confirm Delete"
       />
     </div>
   );
