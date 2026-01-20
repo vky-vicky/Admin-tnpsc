@@ -112,23 +112,9 @@ const UsersList = () => {
                 <td className="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm">
                   {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
                 </td>
-                <td className="px-6 py-4 text-right space-x-2">
-                  <button 
-                      onClick={() => {
-                        adminService.manageExams.getPerformanceAnalysis(user.id)
-                          .then(res => toast.info(`Performance Analysis`, `Accuracy: ${res.data.overall_summary.accuracy_percentage}% | Questions: ${res.data.total_questions_analyzed}`))
-                          .catch(() => toast.error('Analysis Unavailable', 'No performance data for this user.'));
-                      }}
-                     className="text-emerald-600 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 text-sm font-medium"
-                  >
-                    Analysis
-                  </button>
-                  <button 
-                     onClick={() => handleRoleChange(user.id, user.role === 'admin' ? 'user' : 'admin')}
-                     className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium"
-                  >
-                    {user.role === 'admin' ? 'Demote' : 'Promote'}
-                  </button>
+                <td className="px-6 py-4 text-right space-x-1">
+
+                 
                   <button 
                      onClick={() => openDeleteModal(user.id, user.name)}
                      className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium"

@@ -28,7 +28,7 @@ const Notifications = () => {
   const [examNotify, setExamNotify] = useState({
     exam_name: '',
     exam_date: '',
-    exam_type_slug: '',
+    exam_type_slug: 'TNPSC',
     description: '',
     is_active: true
   });
@@ -66,13 +66,22 @@ const Notifications = () => {
   const handleExamNotify = async (e) => {
     e.preventDefault();
     try {
-      await adminService.manageExams.createNotification(examNotify);
+      // Ensure the payload matches the backend schema strictly
+      const payload = {
+        ...examNotify,
+        exam_date: new Date(examNotify.exam_date).toISOString(), // Format date to ISO
+        notification_sent: false, // Default value as per schema
+        id: 0 // Default ID if backend requires the full model structure
+      };
+
+      await adminService.manageExams.createNotification(payload);
       toast.success('Alert Created', 'Exam notification has been published.');
-      setExamNotify({ exam_name: '', exam_date: '', exam_type_slug: '', description: '', is_active: true });
+      setExamNotify({ exam_name: '', exam_date: '', exam_type_slug: 'TNPSC', description: '', is_active: true });
       fetchExams();
       setView('list');
     } catch (err) {
-      toast.error('Creation Failed', 'Could not save exam notification.');
+      console.error("Creation failed:", err);
+      toast.error('Creation Failed', 'Could not save exam notification. Check console for details.');
     }
   };
 
