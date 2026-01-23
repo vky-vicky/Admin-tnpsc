@@ -213,6 +213,7 @@ const Exams = () => {
 
       const payload = {
         ...formData,
+        duration_minutes: parseInt(formData.duration_minutes) || 180,
         exam_type: examType, // Sending MOCK_EXAM or REAL_EXAM
         materials: validMaterials.map(m => ({
           material_id: parseInt(m.material_id),

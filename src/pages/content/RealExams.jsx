@@ -77,6 +77,7 @@ const RealExams = () => {
 
       const payload = {
         ...formData,
+        duration_minutes: parseInt(formData.duration_minutes) || 180,
         materials: validMaterials.map(m => ({
           material_id: parseInt(m.material_id),
           num_questions: parseInt(m.num_questions)
