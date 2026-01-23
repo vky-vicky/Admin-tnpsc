@@ -6,7 +6,7 @@ const Leaderboard = () => {
     const { toast } = useToast();
     const [leaderboard, setLeaderboard] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [timeframe, setTimeframe] = useState('alltime'); // 'weekly', 'alltime'
+    const [timeframe, setTimeframe] = useState('daily'); // 'daily', 'weekly', 'alltime'
 
     useEffect(() => {
         fetchLeaderboard();
@@ -15,9 +15,29 @@ const Leaderboard = () => {
     const fetchLeaderboard = async () => {
         setLoading(true);
         try {
-            const res = await adminService.getLeaderboard();
-            const data = Array.isArray(res) ? res : (res.data || res.leaderboard || []);
-            setLeaderboard(data);
+            let res;
+            if (timeframe === 'daily') {
+                res = await adminService.getDailyLeaderboard();
+            } else if (timeframe === 'weekly') {
+                res = await adminService.getWeeklyLeaderboard();
+            } else {
+                res = await adminService.getLeaderboard();
+            }
+
+            // The daily/weekly endpoints return { status: 'success', data: { leaderboard: [...] } }
+            // The alltime might return the array directly or in a different field
+            const data = Array.isArray(res) ? res : (res.data?.leaderboard || res.leaderboard || res.data || []);
+            
+            // Map the fields if they are different (e.g., user_id -> id, total_score -> score/accuracy)
+            const mappedData = data.map(item => ({
+                ...item,
+                id: item.user_id || item.id,
+                accuracy: item.total_score || item.accuracy || 0,
+                level: item.level || 1,
+                exams_taken: item.exams_taken || 0
+            }));
+
+            setLeaderboard(mappedData);
         } catch (err) {
             toast.error('Sync Error', 'Could not retrieve real-time leaderboard data.');
             console.error(err);
@@ -61,6 +81,12 @@ const Leaderboard = () => {
                 </div>
 
                 <div className="flex bg-slate-100 dark:bg-slate-900/50 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner">
+                    <button 
+                        onClick={() => setTimeframe('daily')}
+                        className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeframe === 'daily' ? 'bg-white dark:bg-slate-800 shadow-lg text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    >
+                        Today
+                    </button>
                     <button 
                         onClick={() => setTimeframe('weekly')}
                         className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeframe === 'weekly' ? 'bg-white dark:bg-slate-800 shadow-lg text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
@@ -129,7 +155,7 @@ const Leaderboard = () => {
                                 <th className="px-8 py-6">Rank</th>
                                 <th className="px-8 py-6">Student Prototype</th>
                                 <th className="px-8 py-6 text-center">Knowledge Level</th>
-                                <th className="px-8 py-6 text-right">Performance Accuracy</th>
+                                <th className="px-8 py-6 text-right">{timeframe === 'alltime' ? 'Performance Accuracy' : 'Total Score'}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -168,12 +194,12 @@ const Leaderboard = () => {
                                     <td className="px-8 py-6 text-right">
                                         <div className="space-y-2 flex flex-col items-end">
                                             <div className="flex justify-between items-center mb-1">
-                                                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{player.accuracy || 75}%</span>
+                                                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{player.accuracy}{timeframe === 'alltime' ? '%' : ''}</span>
                                             </div>
                                             <div className="w-32 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                                                 <div 
                                                     className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full" 
-                                                    style={{ width: `${player.accuracy || 75}%` }}
+                                                    style={{ width: `${Math.min(player.accuracy || 0, 100)}%` }}
                                                 ></div>
                                             </div>
                                         </div>

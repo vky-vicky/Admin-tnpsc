@@ -114,6 +114,8 @@ export const adminService = {
   // Gamification & Stats
   getStats: () => api.get('/gamification/stats'),
   getLeaderboard: () => api.get('/gamification/leaderboard'),
+  getDailyLeaderboard: () => api.get('/leaderboard/daily'),
+  getWeeklyLeaderboard: () => api.get('/leaderboard/weekly'),
   awardXP: (data) => api.post('/gamification/award-xp', data),
 
   // Activity Logs
