@@ -133,8 +133,12 @@ const Leaderboard = () => {
                             </div>
 
                             <div className="w-full pt-6 border-t border-slate-100 dark:border-slate-800">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Exams Taken</p>
-                                <p className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter">{player.exams_taken || 0}</p>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    {timeframe === 'alltime' ? 'Avg Accuracy' : 'Total Score'}
+                                </p>
+                                <p className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tighter">
+                                    {player.accuracy}{timeframe === 'alltime' ? '%' : ''}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -154,8 +158,10 @@ const Leaderboard = () => {
                             <tr>
                                 <th className="px-8 py-6">Rank</th>
                                 <th className="px-8 py-6">Student Prototype</th>
-                                <th className="px-8 py-6 text-center">Knowledge Level</th>
-                                <th className="px-8 py-6 text-right">{timeframe === 'alltime' ? 'Performance Accuracy' : 'Total Score'}</th>
+                                <th className="px-8 py-6 text-center">Exams Taken</th>
+                                <th className="px-8 py-6 text-right font-black text-blue-500 uppercase tracking-widest">
+                                    {timeframe === 'alltime' ? 'Accuracy' : 'Score'}
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -188,20 +194,22 @@ const Leaderboard = () => {
                                     </td>
                                     <td className="px-8 py-6 text-center">
                                         <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 inline-block">
-                                            Lvl {player.level || 1}
+                                            {player.exams_taken || 0} Exams
                                         </div>
                                     </td>
                                     <td className="px-8 py-6 text-right">
-                                        <div className="space-y-2 flex flex-col items-end">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{player.accuracy}{timeframe === 'alltime' ? '%' : ''}</span>
-                                            </div>
-                                            <div className="w-32 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                                <div 
-                                                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full" 
-                                                    style={{ width: `${Math.min(player.accuracy || 0, 100)}%` }}
-                                                ></div>
-                                            </div>
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-xl font-black text-blue-500 uppercase tracking-tighter">
+                                                {player.accuracy}{timeframe === 'alltime' ? '%' : ''}
+                                            </span>
+                                            {timeframe === 'alltime' && (
+                                                <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
+                                                    <div 
+                                                        className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full" 
+                                                        style={{ width: `${Math.min(player.accuracy || 0, 100)}%` }}
+                                                    ></div>
+                                                </div>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
