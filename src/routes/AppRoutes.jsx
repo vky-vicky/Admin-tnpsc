@@ -12,6 +12,7 @@ import Notifications from '../pages/content/Notifications';
 import Leaderboard from '../pages/analytics/Leaderboard';
 import Subscriptions from '../pages/Subscription';
 import Settings from '../pages/Settings';
+import ModerationDashboard from '../pages/moderation/ModerationDashboard';
 import DashboardLayout from '../layouts/DashboardLayout';
 
 const AppRoutes = () => {
@@ -31,6 +32,7 @@ const AppRoutes = () => {
         <Route path="leaderboard" element={<Leaderboard />} />
         <Route path="subscriptions" element={<Subscriptions />} />
         <Route path="notifications" element={<Notifications />} />
+        <Route path="moderation" element={<ModerationDashboard />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 
