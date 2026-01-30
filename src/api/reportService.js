@@ -1,8 +1,8 @@
 import api from './axios';
 
 export const reportService = {
-  getReports: (params = {}) => api.get('/reports/admin/all', { params }),
-  takeAction: (reportId, actionData) => api.post(`/reports/admin/${reportId}/action`, actionData),
+  getReports: (params = {}) => api.get('/community/admin/reports/', { params }),
+  takeAction: (reportId, actionData) => api.post(`/community/admin/reports/${reportId}/action/`, actionData),
   
   // To preview content, we might need these
   getPost: (postId) => api.get(`/community/poll/${postId}`), // The backend unified get might be needed or specific ones
