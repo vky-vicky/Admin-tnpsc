@@ -14,6 +14,7 @@ import Settings from '../pages/Settings';
 import ExamsReview from '../pages/content/ExamsReview';
 import ModerationDashboard from '../pages/moderation/ModerationDashboard';
 import DashboardLayout from '../layouts/DashboardLayout';
+import ProtectedRoute from '../components/ProtectedRoute';
 
 const AppRoutes = () => {
   return (
@@ -21,8 +22,9 @@ const AppRoutes = () => {
       <Route path="/" element={<Login />} />
       
       {/* Protected/Dashboard Routes */}
-      <Route path="/dashboard" element={<DashboardLayout />}>
-        <Route index element={<Dashboard />} />
+      <Route element={<ProtectedRoute />}>
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route index element={<Dashboard />} />
         {/* Add more sub-routes here like /dashboard/users */}
         <Route path="users" element={<UsersList />} />
         <Route path="study-materials" element={<StudyMaterials />} />
@@ -35,6 +37,7 @@ const AppRoutes = () => {
         <Route path="moderation" element={<ModerationDashboard />} />
         <Route path="settings" element={<Settings />} />
       </Route>
+    </Route>
 
       {/* Fallback for 404 */}
       <Route path="*" element={
