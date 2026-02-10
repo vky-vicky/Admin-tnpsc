@@ -7,23 +7,28 @@ const Dashboard = () => {
   const { toast } = useToast();
   const [stats, setStats] = useState({
     total_users: 0,
-    active_users: 0,
+    total_resources: 0,
     total_exams: 0,
     total_materials: 0
   });
   const [activities, setActivities] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [upcomingExams, setUpcomingExams] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
       // Fetch all data with individual fallback catching to prevent global failure
-      const [usersRes, materialsRes, realExamsRes, mockExamsRes, activityRes] = await Promise.all([
+      const [usersRes, materialsRes, resourcesRes, realExamsRes, mockExamsRes, activityRes, reportsRes, upcomingRes] = await Promise.all([
         adminService.getUsers().catch(err => { toast.error("Users fetch failed"); return []; }),
         adminService.materials.listStudy().catch(err => { toast.error("Materials fetch failed"); return []; }),
+        adminService.materials.listResource().catch(err => { toast.error("Resources fetch failed"); return []; }),
         adminService.manageExams.listReal('REAL_EXAM').catch(err => { toast.error("Real Exams fetch failed"); return []; }),
         adminService.manageExams.listReal('MOCK_EXAM').catch(err => { toast.error("Mock Exams fetch failed"); return []; }),
-        adminService.getRecentActivity(5).catch(err => { toast.error("Activity fetch failed"); return []; })
+        adminService.getRecentActivity(5).catch(err => { toast.error("Activity fetch failed"); return []; }),
+        adminService.getReports ? adminService.getReports({ status: 'PENDING' }).catch(err => []) : Promise.resolve([]),
+        adminService.manageExams.listUpcoming().catch(err => [])
       ]);
 
       const getList = (res) => {
@@ -44,18 +49,26 @@ const Dashboard = () => {
 
       const userList = getList(usersRes);
       const materialList = getList(materialsRes);
+      const resourceList = getList(resourcesRes);
       const realExamList = getList(realExamsRes);
       const mockExamList = getList(mockExamsRes);
       const activityList = getList(activityRes);
 
+      const getFullList = (res) => {
+        const list = getList(res);
+        return Array.isArray(list) ? list : [];
+      };
+
       setStats({
         total_users: userList.length,
-        active_users: userList.filter(u => u.is_active !== false).length,
+        total_resources: resourceList.length,
         total_exams: realExamList.length + mockExamList.length,
         total_materials: materialList.length
       });
 
       setActivities(activityList);
+      setReports(getFullList(reportsRes));
+      setUpcomingExams(getFullList(upcomingRes).slice(0, 3));
 
     } catch (error) {
       console.error("Critical error in Dashboard data fetching", error);
@@ -109,11 +122,11 @@ const Dashboard = () => {
           icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>}
         />
         <StatCard 
-          title="Active Accounts" 
-          count={stats.active_users} 
+          title="Resource Materials" 
+          count={stats.total_resources} 
           trend={5}
           color="green"
-          icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>}
         />
         <StatCard 
           title="Total Exams" 
@@ -167,14 +180,17 @@ const Dashboard = () => {
         <div className="space-y-6">
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden">
             <div className="relative z-10">
-              <h3 className="text-lg font-bold mb-1">Pending Approvals</h3>
-              <p className="text-indigo-100 text-sm mb-4">Review content waiting for publication</p>
+              <h3 className="text-lg font-bold mb-1">Community Moderation</h3>
+              <p className="text-indigo-100 text-sm mb-4">Pending reports requiring review</p>
               <div className="flex items-center gap-2 mb-2">
-                 <span className="text-4xl font-bold">3</span>
+                 <span className="text-4xl font-bold">{reports.length}</span>
                  <span className="text-indigo-200 text-sm">items</span>
               </div>
-              <button className="w-full py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-semibold backdrop-blur-sm transition-colors">
-                Review Now
+              <button 
+                onClick={() => window.location.hash = '#/dashboard/moderation'}
+                className="w-full py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-semibold backdrop-blur-sm transition-colors text-center"
+              >
+                Moderate Now
               </button>
             </div>
             <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
@@ -182,36 +198,28 @@ const Dashboard = () => {
           </div>
 
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-            <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-4">Enterprise Alerts</h3>
-            <div className="grid grid-cols-2 gap-3">
-               <button 
-                  onClick={() => toast.success("Export successful", { message: "Your CSV file is ready for download." })}
-                  className="px-4 py-2 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-emerald-100 transition-all border border-emerald-100 dark:border-emerald-800/50"
-               >
-                  Success
-               </button>
-               <button 
-                  onClick={() => toast.error("Connection failed", { 
-                    actions: [{ label: 'Retry', onClick: () => console.log('Retrying...') }] 
-                  })}
-                  className="px-4 py-2 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-rose-100 transition-all border border-rose-100 dark:border-rose-800/50"
-               >
-                  Error
-               </button>
-               <button 
-                  onClick={() => toast.warning("Session expiring", { duration: 10000 })}
-                  className="px-4 py-2 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-amber-100 transition-all border border-amber-100 dark:border-amber-800/50"
-               >
-                  Warning
-               </button>
-               <button 
-                  onClick={() => toast.info("System Update", { duration: 8000 })}
-                  className="px-4 py-2 bg-sky-50 dark:bg-sky-950/30 text-sky-600 dark:text-sky-400 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-sky-100 transition-all border border-sky-100 dark:border-sky-800/50"
-               >
-                  Info
-               </button>
+            <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-4">Upcoming Exam Alerts</h3>
+            <div className="space-y-3">
+               {upcomingExams.length === 0 ? (
+                 <p className="text-xs text-slate-500 italic">No upcoming exams scheduled.</p>
+               ) : (
+                 upcomingExams.map((exam) => (
+                   <div key={exam.id} className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700/50 flex flex-col gap-1">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{exam.exam_name}</p>
+                      <div className="flex justify-between items-center text-[10px]">
+                         <span className="text-blue-500 font-bold uppercase">{exam.exam_type_slug}</span>
+                         <span className="text-slate-400">{new Date(exam.exam_date).toLocaleDateString()}</span>
+                      </div>
+                   </div>
+                 ))
+               )}
             </div>
-            <p className="mt-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest text-center">Inspired by Vercel & Stripe</p>
+            <button 
+              onClick={() => window.location.hash = '#/content/notifications'}
+              className="mt-4 w-full py-2 text-xs font-bold uppercase tracking-widest text-slate-500 bg-slate-100 dark:bg-slate-700/50 rounded-xl hover:bg-slate-200 transition-all"
+            >
+              View Schedule
+            </button>
           </div>
         </div>
       </div>

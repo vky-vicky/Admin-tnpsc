@@ -28,8 +28,15 @@ const Leaderboard = () => {
             // The alltime might return the array directly or in a different field
             const data = Array.isArray(res) ? res : (res.data?.leaderboard || res.leaderboard || res.data || []);
             
-            // Map the fields if they are different (e.g., user_id -> id, total_score -> score/accuracy)
-            const mappedData = data.map(item => ({
+            // Filter out users with 0 exams taken or 0 accuracy to avoid showing empty placeholders
+            const filteredData = data.filter(item => 
+                (item.exams_taken > 0) || 
+                (item.total_score > 0) || 
+                (item.accuracy > 0)
+            );
+
+            // Map the fields if they are different
+            const mappedData = filteredData.map(item => ({
                 ...item,
                 id: item.user_id || item.id,
                 accuracy: item.total_score || item.accuracy || 0,
@@ -176,7 +183,7 @@ const Leaderboard = () => {
                                 ))
                             ) : leaderboard.length === 0 ? (
                                 <tr>
-                                    <td colSpan="5" className="text-center py-20 text-slate-500 font-bold uppercase tracking-widest">Initializing User Tracking...</td>
+                                    <td colSpan="5" className="text-center py-20 text-slate-500 font-bold uppercase tracking-widest italic">No active participants found yet</td>
                                 </tr>
                             ) : leaderboard.map((player, idx) => (
                                 <tr key={player.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all cursor-default">

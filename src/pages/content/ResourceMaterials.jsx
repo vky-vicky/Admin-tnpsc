@@ -70,6 +70,16 @@ const ResourceMaterials = () => {
       toast.error('Upload Failed', 'There was an issue processing your resource file.');
     }
   };
+  
+  const handleDownload = async (id, title) => {
+    toast.info('Downloading Resource', `Starting download for ${title}...`);
+    try {
+      await adminService.materials.downloadResource(id);
+      toast.success('Download Successful', `${title} has been saved to your device.`);
+    } catch (err) {
+      toast.error('Download Failed', 'Could not retrieve the file from the server.');
+    }
+  };
 
   const openDeleteModal = (id, title) => {
     setDeleteModal({
@@ -147,7 +157,7 @@ const ResourceMaterials = () => {
                     <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{m.category || 'General'}</td>
                     <td className="px-6 py-4 text-sm text-slate-500">{new Date(m.uploaded_at).toLocaleDateString()}</td>
                     <td className="px-6 py-4 text-right">
-                      <button onClick={() => adminService.materials.downloadResource(m.id)} className="text-blue-500 hover:text-blue-700 p-2 mr-2" title="Download">
+                      <button onClick={() => handleDownload(m.id, m.title)} className="text-blue-500 hover:text-blue-700 p-2 mr-2" title="Download">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                       </button>
                       <button onClick={() => openDeleteModal(m.id, m.title)} className="text-red-500 hover:text-red-700 p-2">

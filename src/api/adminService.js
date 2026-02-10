@@ -35,6 +35,18 @@ export const adminService = {
     deleteReal: (id) => api.delete(`/exam/real-exam/${id}`),
     getRealDetails: (id) => api.get(`/exams/${id}`),
     
+    // Admin Review Flow
+    listPending: () => api.get('/admin/exams/pending'),
+    getExamDetailWithQuestions: (id) => api.get(`/admin/exams/${id}`),
+    updateExam: (id, data) => api.patch(`/admin/exams/${id}`, data),
+    publishExam: (id) => api.post(`/admin/exams/${id}/publish`),
+    
+    // Question Management
+    updateQuestion: (id, data) => api.patch(`/questions/${id}`, data),
+    deleteQuestion: (id) => api.delete(`/questions/${id}`),
+    getQuestionReports: (status) => api.get('/questions/reports', { params: { status } }),
+    actionQuestionReport: (id, action) => api.post(`/questions/reports/${id}/action`, { action }),
+    
     // Exam Flow & Instructions (New from snippet)
     getInstructions: (examId) => api.get(`/exam/${examId}/instructions`),
     
@@ -109,6 +121,50 @@ export const adminService = {
     createResourceInCategory: (category, formData) => api.post(`/resource-materials/category/${category}/`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     }),
+    downloadResource: async (id) => {
+      try {
+        const response = await api.get(`/resource-materials/${id}/download`, {
+          responseType: 'blob',
+        });
+        
+        // Create download link from blob
+        const blob = new Blob([response.data]);
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        
+        // Extract filename from Content-Disposition header
+        const contentDisposition = response.headers['content-disposition'];
+        let fileName = 'resource-material.pdf';
+        
+        if (contentDisposition) {
+            const fileNameMatch = contentDisposition.match(/filename="?(.+)"?/);
+            if (fileNameMatch && fileNameMatch.length === 2)
+                fileName = fileNameMatch[1];
+            else {
+              // Alternative check for filename*=UTF-8''filename.pdf
+              const fileNameMatchStar = contentDisposition.match(/filename\*=UTF-8''(.+)/);
+              if (fileNameMatchStar && fileNameMatchStar.length === 2)
+                  fileName = decodeURIComponent(fileNameMatchStar[1]);
+            }
+        }
+        
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+        
+        // Clean up
+        setTimeout(() => {
+          link.remove();
+          window.URL.revokeObjectURL(url);
+        }, 100);
+        
+      } catch (error) {
+        console.error("Download failed", error);
+        // Re-throw so the UI component can show the error toast
+        throw error;
+      }
+    },
   },
 
   // Gamification & Stats

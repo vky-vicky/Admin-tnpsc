@@ -35,7 +35,7 @@ const StatCard = ({ title, count, icon, color, trend }) => {
         <div>
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">{title}</p>
           <h3 className="text-3xl font-bold text-slate-800 dark:text-white">
-            {displayCount.toLocaleString()}+
+            {displayCount.toLocaleString()}
           </h3>
           {trend && (
             <p className={`text-xs font-semibold mt-2 ${trend > 0 ? 'text-emerald-500' : 'text-red-500'} flex items-center gap-1`}>

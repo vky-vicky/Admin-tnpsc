@@ -27,6 +27,7 @@ const StudyMaterials = () => {
     language: 'english',
     category: '',
     subject: '',
+    exam_type: 'TNPSC',
     uploaded_by: 1, 
     file: null
   });
@@ -103,6 +104,7 @@ const StudyMaterials = () => {
     data.append('language', formData.language);
     data.append('category', formData.category);
     data.append('subject', formData.subject);
+    data.append('exam_type', formData.exam_type);
     data.append('uploaded_by', formData.uploaded_by);
     data.append('file', formData.file);
 
@@ -115,6 +117,7 @@ const StudyMaterials = () => {
         language: 'english',
         category: '',
         subject: '',
+        exam_type: 'TNPSC',
         uploaded_by: 1,
         file: null
       });
@@ -248,7 +251,7 @@ const StudyMaterials = () => {
                 onChange={(e) => setFormData({...formData, category: e.target.value})}
               />
             </div>
-            <div className="md:col-span-2">
+            <div>
               <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Subject / Topic</label>
               <input 
                 type="text" required
@@ -257,6 +260,20 @@ const StudyMaterials = () => {
                 value={formData.subject}
                 onChange={(e) => setFormData({...formData, subject: e.target.value})}
               />
+            </div>
+            <div>
+              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Target Exam Type</label>
+              <select 
+                className="w-full p-4 bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 shadow-sm appearance-none"
+                value={formData.exam_type}
+                onChange={(e) => setFormData({...formData, exam_type: e.target.value})}
+              >
+                <option value="TNPSC">TNPSC General</option>
+                <option value="TNPSC_GROUP_4">TNPSC Group 4</option>
+                <option value="TNPSC_GROUP_2">TNPSC Group 2</option>
+                <option value="TET">TET</option>
+                <option value="POLICE">Police Exam</option>
+              </select>
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Source File (PDF Preferred)</label>
@@ -324,6 +341,7 @@ const StudyMaterials = () => {
             <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-black tracking-[0.2em]">
               <tr>
                 <th className="px-8 py-5">Material Info</th>
+                <th className="px-8 py-5">Exam Type</th>
                 <th className="px-8 py-5">Category</th>
                 <th className="px-8 py-5">Language</th>
                 <th className="px-8 py-5 text-right">Actions</th>
@@ -345,6 +363,11 @@ const StudyMaterials = () => {
                     <td className="px-8 py-5">
                       <div className="font-bold text-slate-800 dark:text-white group-hover:text-blue-500 transition-colors uppercase tracking-tight">{m.title}</div>
                       <div className="text-[10px] text-slate-400 font-black uppercase mt-1 tracking-widest">{m.subject || 'Uncategorized Subject'}</div>
+                    </td>
+                    <td className="px-8 py-5">
+                      <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                        {m.exam_type?.replace('_', ' ') || 'TNPSC'}
+                      </span>
                     </td>
                     <td className="px-8 py-5">
                       <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">

@@ -2,7 +2,6 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Home from '../pages/Home';
 import Login from '../pages/Login';
-import RegisterAdmin from '../pages/RegisterAdmin';
 import Dashboard from '../pages/Dashboard';
 import UsersList from '../pages/users/UsersList';
 import StudyMaterials from '../pages/content/StudyMaterials';
@@ -12,6 +11,7 @@ import Notifications from '../pages/content/Notifications';
 import Leaderboard from '../pages/analytics/Leaderboard';
 import Subscriptions from '../pages/Subscription';
 import Settings from '../pages/Settings';
+import ExamsReview from '../pages/content/ExamsReview';
 import ModerationDashboard from '../pages/moderation/ModerationDashboard';
 import DashboardLayout from '../layouts/DashboardLayout';
 
@@ -19,7 +19,6 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={<Login />} />
-      <Route path="/register-admin" element={<RegisterAdmin />} />
       
       {/* Protected/Dashboard Routes */}
       <Route path="/dashboard" element={<DashboardLayout />}>
@@ -29,6 +28,7 @@ const AppRoutes = () => {
         <Route path="study-materials" element={<StudyMaterials />} />
         <Route path="resource-materials" element={<ResourceMaterials />} />
         <Route path="exams" element={<Exams />} />
+        <Route path="exams-review" element={<ExamsReview />} />
         <Route path="leaderboard" element={<Leaderboard />} />
         <Route path="subscriptions" element={<Subscriptions />} />
         <Route path="notifications" element={<Notifications />} />
