@@ -81,6 +81,16 @@ const ResourceMaterials = () => {
     }
   };
 
+  const handleTriggerExamFlow = async (id, title) => {
+    toast.info('Starting AI Flow', `Processing ${title} for exam questions...`);
+    try {
+      await adminService.materials.triggerExamFlow(id);
+      toast.success('AI Flow Triggered', 'Question extraction started! Check "Exams Review" in a few minutes.');
+    } catch (err) {
+      toast.error('Trigger Failed', 'Could not start AI processing for this resource.');
+    }
+  };
+
   const openDeleteModal = (id, title) => {
     setDeleteModal({
       isOpen: true,
@@ -157,6 +167,13 @@ const ResourceMaterials = () => {
                     <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{m.category || 'General'}</td>
                     <td className="px-6 py-4 text-sm text-slate-500">{new Date(m.uploaded_at).toLocaleDateString()}</td>
                     <td className="px-6 py-4 text-right">
+                      <button 
+                        onClick={() => handleTriggerExamFlow(m.id, m.title)} 
+                        className="text-amber-500 hover:text-amber-700 p-2 mr-2" 
+                        title="Generate Exam (AI)"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                      </button>
                       <button onClick={() => handleDownload(m.id, m.title)} className="text-blue-500 hover:text-blue-700 p-2 mr-2" title="Download">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                       </button>

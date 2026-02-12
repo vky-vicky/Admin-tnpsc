@@ -16,7 +16,7 @@ const Login = () => {
     const token = localStorage.getItem('admin_token');
     const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
     if (token && user.role === 'admin') {
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     }
   }, [navigate]);
 
@@ -30,7 +30,8 @@ const Login = () => {
       const token = response.access_token || response.token || response.data?.token;
       
       if (token) {
-        let userData = response.user || (response.data && response.data.user);
+        // Backend returns 'admin' field, not 'user'
+        let userData = response.admin || response.user || (response.data && response.data.admin) || (response.data && response.data.user);
         
         // Safety check for user details (some APIs return it differently)
         if (!userData && response.data) {
@@ -38,7 +39,14 @@ const Login = () => {
         }
 
         // ROLE RESTRICTION: Only admins can proceed
-        if (userData && userData.role !== 'admin') {
+        // Normalize role: remove underscores, convert to lowercase
+        const normalizedRole = userData?.role?.toLowerCase().replace(/_/g, '');
+        const isAdmin = normalizedRole === 'admin' || 
+                       normalizedRole === 'administrator' || 
+                       normalizedRole === 'superadmin' || 
+                       userData?.is_admin === true;
+
+        if (!isAdmin) {
            setError('Access Denied: Only administrators can access this portal.');
            setLoading(false);
            return;
@@ -50,7 +58,7 @@ const Login = () => {
         }
         
         toast.success('Authentication Successful', `Welcome back, Admin!`);
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
       } else {
         setError('Login successful but no token received.');
       }

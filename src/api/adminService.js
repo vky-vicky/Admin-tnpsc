@@ -2,7 +2,7 @@ import api from './axios';
 
 export const adminService = {
   // Authentication
-  login: (email, password) => api.post('/auth/login', { email, password }),
+  login: (email, password) => api.post('/admin/login', { email, password }),
   register: (userData) => api.post('/auth/register', userData),
 
   // User Management
@@ -161,10 +161,10 @@ export const adminService = {
         
       } catch (error) {
         console.error("Download failed", error);
-        // Re-throw so the UI component can show the error toast
         throw error;
       }
     },
+    triggerExamFlow: (id) => api.post(`/resource-materials/${id}/trigger-exam-flow`),
   },
 
   // Gamification & Stats

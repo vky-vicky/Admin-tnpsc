@@ -6,7 +6,13 @@ const ProtectedRoute = () => {
   const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
 
   // Check if token exists and user is an admin
-  const isAuthenticated = token && user.role === 'admin';
+  // Normalize role: remove underscores, convert to lowercase
+  const normalizedRole = user?.role?.toLowerCase().replace(/_/g, '');
+  const isAdmin = normalizedRole === 'admin' || 
+                 normalizedRole === 'administrator' || 
+                 normalizedRole === 'superadmin' || 
+                 user?.is_admin === true;
+  const isAuthenticated = token && isAdmin;
 
   if (!isAuthenticated) {
     // If not authenticated, redirect to login page
