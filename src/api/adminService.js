@@ -24,7 +24,7 @@ export const adminService = {
   
   manageExams: {
     // Official Notifications/Exams
-    listUpcoming: () => api.get('/notifications/upcoming_exams'),
+    listUpcoming: () => api.get('/admin/notifications/upcoming-exams'),
     createNotification: (data) => api.post('/notifications/exams/', data),
     updateNotification: (id, data) => api.put(`/notifications/exams/${id}`, data),
     deleteNotification: (id) => api.delete(`/notifications/exams/${id}`),
