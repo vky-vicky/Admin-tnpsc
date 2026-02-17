@@ -115,7 +115,6 @@ const Login = () => {
                 type={showPassword ? "text" : "password"} 
                 required
                 minLength={6}
-                maxLength={6}
                 className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium pr-12"
                 placeholder="••••••"
                 value={password}
