@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../api/adminService';
+import { analyticsService } from '../api/analyticsService';
 import StatCard from '../components/StatCard';
 import { useToast } from '../context/ToastContext';
 
@@ -15,12 +16,15 @@ const Dashboard = () => {
   const [reports, setReports] = useState([]);
   const [upcomingExams, setUpcomingExams] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [proficiency, setProficiency] = useState([]);
+  const [toughness, setToughness] = useState(null);
+  const [performance, setPerformance] = useState([]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
       // Fetch all data with individual fallback catching to prevent global failure
-      const [usersRes, materialsRes, resourcesRes, realExamsRes, mockExamsRes, activityRes, reportsRes, upcomingRes] = await Promise.all([
+      const [usersRes, materialsRes, resourcesRes, realExamsRes, mockExamsRes, activityRes, reportsRes, upcomingRes, analyticsRes, proficiencyRes, toughnessRes, performanceRes] = await Promise.all([
         adminService.getUsers().catch(err => { toast.error("Users fetch failed"); return []; }),
         adminService.materials.listStudy().catch(err => { toast.error("Materials fetch failed"); return []; }),
         adminService.materials.listResource().catch(err => { toast.error("Resources fetch failed"); return []; }),
@@ -28,7 +32,11 @@ const Dashboard = () => {
         adminService.manageExams.listReal('MOCK_EXAM').catch(err => { toast.error("Mock Exams fetch failed"); return []; }),
         adminService.getRecentActivity(5).catch(err => { toast.error("Activity fetch failed"); return []; }),
         adminService.getReports ? adminService.getReports({ status: 'PENDING' }).catch(err => []) : Promise.resolve([]),
-        adminService.manageExams.listUpcoming().catch(err => [])
+        adminService.manageExams.listUpcoming().catch(err => []),
+        analyticsService.getDashboardStats().catch(() => null),
+        analyticsService.getSubjectProficiency().catch(() => []),
+        analyticsService.getToughnessAnalytics().catch(() => null),
+        analyticsService.getUserPerformance().catch(() => [])
       ]);
 
       const getList = (res) => {
@@ -69,6 +77,20 @@ const Dashboard = () => {
       setActivities(activityList);
       setReports(getFullList(reportsRes));
       setUpcomingExams(getFullList(upcomingRes).slice(0, 3));
+      
+      if (analyticsRes) {
+        const aData = analyticsRes.data || analyticsRes;
+        setStats(prev => ({
+            ...prev,
+            total_users: aData.total_users || prev.total_users,
+            total_exams: aData.total_attempts || prev.total_exams, // Using attempts as active stat
+            total_materials: aData.total_materials || prev.total_materials
+        }));
+      }
+
+      setProficiency(proficiencyRes?.data || proficiencyRes || []);
+      setToughness(toughnessRes?.data || toughnessRes);
+      setPerformance(performanceRes?.data || performanceRes || []);
 
     } catch (error) {
       console.error("Critical error in Dashboard data fetching", error);
@@ -197,6 +219,35 @@ const Dashboard = () => {
             <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-purple-500/30 rounded-full blur-2xl"></div>
           </div>
 
+          {/* Subject Proficiency */}
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-sm border border-slate-200 dark:border-slate-800 p-8 space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Subject Proficiency</h2>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">Avg Accuracy</span>
+            </div>
+            
+            <div className="space-y-4">
+              {proficiency.length === 0 ? (
+                  <p className="text-slate-400 italic text-sm py-10 text-center">No subject data available yet.</p>
+              ) : (
+                  proficiency.slice(0, 6).map((item, idx) => (
+                      <div key={idx} className="space-y-2">
+                          <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-slate-500">
+                              <span>{item.subject}</span>
+                              <span className="text-indigo-600 dark:text-indigo-400">{item.average_score}%</span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                              <div 
+                                  className="h-full bg-indigo-500 rounded-full transition-all duration-1000" 
+                                  style={{ width: `${item.average_score}%` }}
+                              ></div>
+                          </div>
+                      </div>
+                  ))
+              )}
+            </div>
+          </div>
+
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
             <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-4">Upcoming Exam Alerts</h3>
             <div className="space-y-3">
@@ -221,6 +272,106 @@ const Dashboard = () => {
               View Schedule
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Analytics Section 2: Performance & Toughness */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-8 border-t border-slate-100 dark:border-slate-800">
+        
+        {/* Top Performers */}
+        <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
+          <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/20">
+            <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Top Performers</h2>
+            <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest bg-amber-500/10 px-3 py-1 rounded-full">Global Rank</span>
+          </div>
+          
+          <div className="overflow-y-auto max-h-[400px] flex-1">
+            <table className="w-full text-left">
+                <thead className="bg-slate-50/30 dark:bg-slate-800/20 text-slate-400 uppercase text-[9px] font-black tracking-widest sticky top-0">
+                    <tr>
+                        <th className="px-8 py-4">User</th>
+                        <th className="px-8 py-4">Attempts</th>
+                        <th className="px-8 py-4 text-right">Avg Score</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {performance.length === 0 ? (
+                        <tr><td colSpan="3" className="p-8 text-center text-slate-400 italic">No performer data yet.</td></tr>
+                    ) : (
+                        performance.map((user, idx) => (
+                            <tr key={user.user_id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-300">
+                                <td className="px-8 py-4">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-xs font-black text-slate-300">#{idx + 1}</span>
+                                        <span className="font-bold text-slate-800 dark:text-white truncate max-w-[120px]">{user.user_name}</span>
+                                    </div>
+                                </td>
+                                <td className="px-8 py-4">
+                                    <span className="text-xs font-bold text-slate-500">{user.total_attempts}</span>
+                                </td>
+                                <td className="px-8 py-4 text-right">
+                                    <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs font-black uppercase">
+                                        {user.average_score}%
+                                    </span>
+                                </td>
+                            </tr>
+                        ))
+                    )}
+                </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Toughness Analytics */}
+        <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl border border-slate-200 dark:border-slate-800 p-8 space-y-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Toughness Distribution</h2>
+            </div>
+
+            {toughness ? (
+                <div className="space-y-6">
+                    <div className="flex gap-2 mb-4">
+                        <span className="text-[10px] font-black text-slate-500 bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-xl">
+                            Preferred Level: <span className="text-indigo-600 font-black">{toughness.most_used_level || 'N/A'}</span>
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
+                        {toughness.popularity?.map((pop, idx) => (
+                            <div key={idx} className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 flex items-center justify-between gap-6 transition-all hover:scale-[1.02]">
+                                <div className="flex-1 space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${
+                                            pop.toughness_level?.toLowerCase().includes('hard') ? 'bg-rose-100 text-rose-600' : 
+                                            pop.toughness_level?.toLowerCase().includes('medium') ? 'bg-amber-100 text-amber-600' : 
+                                            'bg-emerald-100 text-emerald-600'
+                                        }`}>
+                                            {pop.toughness_level}
+                                        </span>
+                                        <span className="text-xs font-bold text-slate-400">{pop.attempt_count} Attempts</span>
+                                    </div>
+                                    <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                        <div 
+                                            className={`h-full rounded-full transition-all duration-1000 ${
+                                                pop.toughness_level?.toLowerCase().includes('hard') ? 'bg-rose-500' : 
+                                                pop.toughness_level?.toLowerCase().includes('medium') ? 'bg-amber-500' : 
+                                                'bg-emerald-500'
+                                            }`} 
+                                            style={{ width: `${pop.average_score}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Average</p>
+                                    <p className="text-2xl font-black text-slate-800 dark:text-white">{pop.average_score}%</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ) : (
+                <div className="py-20 text-center text-slate-400 italic">Calculating toughness metrics...</div>
+            )}
         </div>
       </div>
     </div>

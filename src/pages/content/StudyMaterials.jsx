@@ -28,6 +28,7 @@ const StudyMaterials = () => {
     category: '',
     subject: '',
     exam_type: 'TNPSC',
+    toughness_level: 'medium',
     uploaded_by: 1, 
     file: null
   });
@@ -105,6 +106,7 @@ const StudyMaterials = () => {
     data.append('category', formData.category);
     data.append('subject', formData.subject);
     data.append('exam_type', formData.exam_type);
+    data.append('toughness_level', formData.toughness_level);
     data.append('uploaded_by', formData.uploaded_by);
     data.append('file', formData.file);
 
@@ -118,6 +120,7 @@ const StudyMaterials = () => {
         category: '',
         subject: '',
         exam_type: 'TNPSC',
+        toughness_level: 'medium',
         uploaded_by: 1,
         file: null
       });
@@ -275,6 +278,18 @@ const StudyMaterials = () => {
                 <option value="POLICE">Police Exam</option>
               </select>
             </div>
+            <div>
+              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Toughness Level</label>
+              <select 
+                className="w-full p-4 bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 shadow-sm appearance-none"
+                value={formData.toughness_level}
+                onChange={(e) => setFormData({...formData, toughness_level: e.target.value})}
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
             <div className="md:col-span-2">
               <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Source File (PDF Preferred)</label>
               <input 
@@ -343,6 +358,7 @@ const StudyMaterials = () => {
                 <th className="px-8 py-5">Material Info</th>
                 <th className="px-8 py-5">Exam Type</th>
                 <th className="px-8 py-5">Category</th>
+                <th className="px-8 py-5">Complexity</th>
                 <th className="px-8 py-5">Language</th>
                 <th className="px-8 py-5 text-right">Actions</th>
               </tr>
@@ -372,6 +388,15 @@ const StudyMaterials = () => {
                     <td className="px-8 py-5">
                       <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">
                         {m.category || 'General'}
+                      </span>
+                    </td>
+                    <td className="px-8 py-5">
+                      <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
+                        m.toughness_level === 'hard' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400' :
+                        m.toughness_level === 'medium' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400' :
+                        'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
+                      }`}>
+                        {m.toughness_level || 'Medium'}
                       </span>
                     </td>
                     <td className="px-8 py-5">
