@@ -170,6 +170,7 @@ const Notifications = () => {
           <table className="w-full text-left">
             <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 uppercase text-xs font-bold tracking-wider">
               <tr>
+                <th className="px-6 py-4">ID</th>
                 <th className="px-6 py-4">Exam Alert</th>
                 <th className="px-6 py-4">Target Date</th>
                 <th className="px-6 py-4">Status</th>
@@ -178,12 +179,13 @@ const Notifications = () => {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {loading ? (
-                <tr><td colSpan="4" className="text-center py-12">Loading alerts...</td></tr>
+                <tr><td colSpan="5" className="text-center py-12">Loading alerts...</td></tr>
               ) : exams.length === 0 ? (
-                <tr><td colSpan="4" className="text-center py-12 text-slate-400">No upcoming exam alerts found</td></tr>
+                <tr><td colSpan="5" className="text-center py-12 text-slate-400">No upcoming exam alerts found</td></tr>
               ) : (
                 exams.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                    <td className="px-6 py-4 text-xs font-mono text-slate-400">#{item.id}</td>
                     <td className="px-6 py-4">
                       <div className="font-semibold text-slate-800 dark:text-slate-100">{item.exam_name}</div>
                       <div className="text-xs text-slate-500">{item.exam_type_slug}</div>

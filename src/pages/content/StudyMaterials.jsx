@@ -331,7 +331,7 @@ const StudyMaterials = () => {
                     <div className="space-y-3">
                         {items.slice(0, 3).map(item => (
                             <div key={item.id} className="flex items-center justify-between group/item">
-                                <span className="text-sm font-bold text-slate-600 dark:text-slate-400 truncate max-w-[150px]">{item.title}</span>
+                                <span className="text-sm font-bold text-slate-600 dark:text-slate-400 truncate max-w-[150px]">{item.title} <span className="text-[10px] opacity-50 ml-1">#{item.id}</span></span>
                                 <div className="flex gap-1">
                                     <button onClick={() => handleDownload(item.id, item.title)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-blue-500 transition-all" title="Download">
                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
@@ -355,6 +355,7 @@ const StudyMaterials = () => {
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-black tracking-[0.2em]">
               <tr>
+                <th className="px-8 py-5">ID</th>
                 <th className="px-8 py-5">Material Info</th>
                 <th className="px-8 py-5">Exam Type</th>
                 <th className="px-8 py-5">Category</th>
@@ -365,10 +366,10 @@ const StudyMaterials = () => {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {loading ? (
-                <tr><td colSpan="4" className="text-center py-20 text-slate-400 animate-pulse font-bold">Fetching educational assets...</td></tr>
+                <tr><td colSpan="7" className="text-center py-20 text-slate-400 animate-pulse font-bold">Fetching educational assets...</td></tr>
               ) : currentMaterials.length === 0 ? (
                 <tr>
-                   <td colSpan="4" className="text-center py-20">
+                   <td colSpan="7" className="text-center py-20">
                       <p className="text-slate-500 font-bold mb-4">No assets found matching your criteria.</p>
                       <button onClick={fetchData} className="px-6 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-xl">Refresh List</button>
                    </td>
@@ -376,6 +377,9 @@ const StudyMaterials = () => {
               ) : (
                 currentMaterials.map((m) => (
                   <tr key={m.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all group">
+                    <td className="px-8 py-5">
+                      <span className="text-slate-400 font-mono text-xs">#{m.id}</span>
+                    </td>
                     <td className="px-8 py-5">
                       <div className="font-bold text-slate-800 dark:text-white group-hover:text-blue-500 transition-colors uppercase tracking-tight">{m.title}</div>
                       <div className="text-[10px] text-slate-400 font-black uppercase mt-1 tracking-widest">{m.subject || 'Uncategorized Subject'}</div>

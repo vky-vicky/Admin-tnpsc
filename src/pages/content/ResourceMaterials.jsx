@@ -149,6 +149,7 @@ const ResourceMaterials = () => {
           <table className="w-full text-left">
             <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 uppercase text-xs font-bold tracking-wider">
               <tr>
+                <th className="px-6 py-4">ID</th>
                 <th className="px-6 py-4">Resource Name</th>
                 <th className="px-6 py-4">Category</th>
                 <th className="px-6 py-4">Uploaded At</th>
@@ -157,12 +158,13 @@ const ResourceMaterials = () => {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {loading ? (
-                <tr><td colSpan="4" className="text-center py-12">Loading resources...</td></tr>
+                <tr><td colSpan="5" className="text-center py-12">Loading resources...</td></tr>
               ) : currentMaterials.length === 0 ? (
-                <tr><td colSpan="4" className="text-center py-12 text-slate-400">No resources found</td></tr>
+                <tr><td colSpan="5" className="text-center py-12 text-slate-400">No resources found</td></tr>
               ) : (
                 currentMaterials.map((m) => (
                   <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 group">
+                    <td className="px-6 py-4 text-xs font-mono text-slate-400">#{m.id}</td>
                     <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-100">{m.title}</td>
                     <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{m.category || 'General'}</td>
                     <td className="px-6 py-4 text-sm text-slate-500">{new Date(m.uploaded_at).toLocaleDateString()}</td>
