@@ -118,9 +118,6 @@ export const adminService = {
     }),
     deleteResource: (id) => api.delete(`/resource-materials/${id}`),
     getResourceByCategory: (category) => api.get(`/resource-materials/category/${category}`),
-    createResourceInCategory: (category, formData) => api.post(`/resource-materials/category/${category}/`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    }),
     downloadResource: async (id) => {
       try {
         const response = await api.get(`/resource-materials/${id}/download`, {
@@ -176,4 +173,7 @@ export const adminService = {
 
   // Activity Logs
   getRecentActivity: (limit = 10) => api.get('/admin/recent-activity', { params: { limit } }),
+
+  // Moderation / Reports
+  getReports: (params = {}) => api.get('/admin/reports', { params }),
 };

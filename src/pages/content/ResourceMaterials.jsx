@@ -18,6 +18,7 @@ const ResourceMaterials = () => {
   const [formData, setFormData] = useState({
     title: '',
     category: '',
+    uploaded_by: 1,
     file: null
   });
 
@@ -54,16 +55,13 @@ const ResourceMaterials = () => {
     const data = new FormData();
     data.append('title', formData.title);
     data.append('category', formData.category);
+    data.append('uploaded_by', formData.uploaded_by);
     data.append('file', formData.file);
 
     try {
-      if (formData.category) {
-        await adminService.materials.createResourceInCategory(formData.category, data);
-      } else {
-        await adminService.materials.createResource(data);
-      }
+      await adminService.materials.createResource(data);
       toast.success('Resource Uploaded', 'The material is now available for download in the general category.');
-      setFormData({ title: '', category: '', file: null });
+      setFormData({ title: '', category: '', uploaded_by: 1, file: null });
       setView('list');
       fetchMaterials();
     } catch (err) {

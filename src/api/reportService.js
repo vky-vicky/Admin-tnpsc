@@ -1,11 +1,9 @@
 import api from './axios';
 
 export const reportService = {
-  getReports: (params = {}) => api.get('/community/admin/reports/', { params }),
-  takeAction: (reportId, actionData) => api.post(`/community/admin/reports/${reportId}/action/`, actionData),
+  getReports: (params = {}) => api.get('/admin/reports', { params }),
+  takeAction: (reportId, actionData) => api.post(`/admin/reports/${reportId}/action`, actionData),
   
   // To preview content, we might need these
-  getPost: (postId) => api.get(`/community/poll/${postId}`), // The backend unified get might be needed or specific ones
-  // Note: community_routes.py has /poll/{post_id} which returns poll details. 
-  // For normal posts, we might need another one, but format_post_data is used in get_posts.
+  getPost: (postId) => api.get(`/community/poll/${postId}`), 
 };
