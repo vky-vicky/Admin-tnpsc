@@ -18,6 +18,7 @@ const ResourceMaterials = () => {
   const [formData, setFormData] = useState({
     title: '',
     category: '',
+    exam_type: 'TNPSC', // Manual override
     uploaded_by: 1,
     file: null
   });
@@ -55,13 +56,14 @@ const ResourceMaterials = () => {
     const data = new FormData();
     data.append('title', formData.title);
     data.append('category', formData.category);
+    data.append('exam_type', formData.exam_type);
     data.append('uploaded_by', formData.uploaded_by);
     data.append('file', formData.file);
 
     try {
       await adminService.materials.createResource(data);
       toast.success('Resource Uploaded', 'The material is now available for download in the general category.');
-      setFormData({ title: '', category: '', uploaded_by: 1, file: null });
+      setFormData({ title: '', category: '', exam_type: 'TNPSC', uploaded_by: 1, file: null });
       setView('list');
       fetchMaterials();
     } catch (err) {
@@ -134,6 +136,20 @@ const ResourceMaterials = () => {
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Category (Optional)</label>
               <input type="text" className="w-full p-3 bg-slate-900 text-white border border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-orange-500" value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} placeholder="e.g. Syllabus, Previous Year" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Target Exam Type</label>
+              <select 
+                className="w-full p-3 bg-slate-900 text-white border border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-orange-500 appearance-none"
+                value={formData.exam_type}
+                onChange={(e) => setFormData({...formData, exam_type: e.target.value})}
+              >
+                <option value="TNPSC">TNPSC General</option>
+                <option value="TNPSC_GROUP_4">TNPSC Group 4</option>
+                <option value="TNPSC_GROUP_2">TNPSC Group 2</option>
+                <option value="TET">TET</option>
+                <option value="POLICE">Police Exam</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">File Attachment</label>
