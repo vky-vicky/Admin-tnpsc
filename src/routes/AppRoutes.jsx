@@ -13,6 +13,7 @@ import Subscriptions from '../pages/Subscription';
 import Settings from '../pages/Settings';
 import ExamsReview from '../pages/content/ExamsReview';
 import ModerationDashboard from '../pages/moderation/ModerationDashboard';
+import ErrorLogs from '../pages/content/ErrorLogs';
 import DashboardLayout from '../layouts/DashboardLayout';
 import ProtectedRoute from '../components/ProtectedRoute';
 
@@ -35,6 +36,7 @@ const AppRoutes = () => {
         <Route path="subscriptions" element={<Subscriptions />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="moderation" element={<ModerationDashboard />} />
+        <Route path="error-logs" element={<ErrorLogs />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Route>

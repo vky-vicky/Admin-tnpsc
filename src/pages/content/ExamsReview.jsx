@@ -13,7 +13,20 @@ const ExamsReview = () => {
   
   // Editing state
   const [editingQuestion, setEditingQuestion] = useState(null);
-  const [publishLoading, setPublishLoading] = useState(false);
+   const [publishLoading, setPublishLoading] = useState(false);
+   
+   // New Question state
+   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
+   const [newQuestion, setNewQuestion] = useState({
+     question_text: '',
+     option_a: '',
+     option_b: '',
+     option_c: '',
+     option_d: '',
+     correct_answer: 'A',
+     explanation_text: '',
+     language: 'tamil'
+   });
 
   useEffect(() => {
     fetchExams();
@@ -23,7 +36,11 @@ const ExamsReview = () => {
     setLoading(true);
     try {
       const data = await adminService.manageExams.listPending();
-      setExams(Array.isArray(data) ? data : (data.data || []));
+      const rawExams = Array.isArray(data) ? data : (data.data || []);
+      
+      // Filter out Daily Practice exams
+      const filteredExams = rawExams.filter(e => e.exam_type !== 'DAILY_TEST');
+      setExams(filteredExams);
     } catch (err) {
       toast.error('Sync Error', 'Could not fetch pending exams.');
     } finally {
@@ -81,6 +98,28 @@ const ExamsReview = () => {
     }
   };
 
+  const handleAddQuestion = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await adminService.manageExams.addQuestion(selectedExam.id, newQuestion);
+      setQuestions([...questions, res.data || res]);
+      setIsAddingQuestion(false);
+      setNewQuestion({
+        question_text: '',
+        option_a: '',
+        option_b: '',
+        option_c: '',
+        option_d: '',
+        correct_answer: 'A',
+        explanation_text: '',
+        language: 'tamil'
+      });
+      toast.success('Question Added', 'New question has been appended to the pool.');
+    } catch (err) {
+      toast.error('Add Failed', 'Could not append the new question.');
+    }
+  };
+
   const handlePublish = async () => {
     setPublishLoading(true);
     try {
@@ -95,6 +134,15 @@ const ExamsReview = () => {
     }
   };
 
+  const isPublishable = (exam) => {
+    if (!exam) return false;
+    const name = exam.exam_name?.toLowerCase() || '';
+    const type = exam.exam_type?.toUpperCase() || '';
+    return type === 'REAL_EXAM' || 
+           name.includes('previous year') || 
+           name.includes('pyq');
+  };
+
   if (selectedExam) {
     return (
       <div className="p-6 max-w-5xl mx-auto space-y-8 animate-fade-in">
@@ -103,13 +151,15 @@ const ExamsReview = () => {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                 Back to List
             </button>
-            <button 
-                onClick={handlePublish}
-                disabled={publishLoading}
-                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl shadow-emerald-500/20 transition-all disabled:opacity-50"
-            >
-                {publishLoading ? 'Publishing...' : 'Approve & Publish'}
-            </button>
+            {isPublishable(selectedExam) && (
+                <button 
+                    onClick={handlePublish}
+                    disabled={publishLoading}
+                    className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl shadow-emerald-500/20 transition-all disabled:opacity-50"
+                >
+                    {publishLoading ? 'Publishing...' : 'Approve & Publish'}
+                </button>
+            )}
         </div>
 
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-xl">
@@ -140,7 +190,71 @@ const ExamsReview = () => {
         </div>
 
         <div className="space-y-6">
-            <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Question Pool ({questions.length})</h3>
+            <div className="flex items-center justify-between">
+                <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Question Pool ({questions.length})</h3>
+                <button 
+                  onClick={() => setIsAddingQuestion(true)}
+                  className="px-6 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
+                    New Question
+                </button>
+            </div>
+
+            {isAddingQuestion && (
+                <div className="bg-blue-50/50 dark:bg-blue-900/10 border-2 border-dashed border-blue-200 dark:border-blue-800 rounded-3xl p-8 animate-scale-up">
+                    <h4 className="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-6">Add New Manual Question</h4>
+                    <form onSubmit={handleAddQuestion} className="space-y-6">
+                        <textarea 
+                            required rows="3"
+                            placeholder="Type your question here..."
+                            className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500"
+                            value={newQuestion.question_text}
+                            onChange={(e) => setNewQuestion({...newQuestion, question_text: e.target.value})}
+                        />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {['a', 'b', 'c', 'd'].map(opt => (
+                                <div key={opt}>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Option {opt.toUpperCase()}</label>
+                                    <input 
+                                        required
+                                        className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={newQuestion[`option_${opt}`]}
+                                        onChange={(e) => setNewQuestion({...newQuestion, [`option_${opt}`]: e.target.value})}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div>
+                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Correct Answer</label>
+                                 <select 
+                                     className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                                     value={newQuestion.correct_answer}
+                                     onChange={(e) => setNewQuestion({...newQuestion, correct_answer: e.target.value})}
+                                 >
+                                     <option value="A">Option A</option>
+                                     <option value="B">Option B</option>
+                                     <option value="C">Option C</option>
+                                     <option value="D">Option D</option>
+                                 </select>
+                             </div>
+                             <div>
+                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Explanation (Optional)</label>
+                                 <input 
+                                     className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500"
+                                     value={newQuestion.explanation_text}
+                                     onChange={(e) => setNewQuestion({...newQuestion, explanation_text: e.target.value})}
+                                 />
+                             </div>
+                        </div>
+                        <div className="flex justify-end gap-3 pt-4 border-t border-blue-100 dark:border-blue-900/30">
+                            <button type="button" onClick={() => setIsAddingQuestion(false)} className="px-6 py-2 text-slate-500 font-bold uppercase text-[10px] tracking-widest">Cancel</button>
+                            <button type="submit" className="px-10 py-3 bg-blue-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest shadow-xl shadow-blue-500/20">Add Question</button>
+                        </div>
+                    </form>
+                </div>
+            )}
             {questions.map((q, idx) => (
                 <div key={q.id} className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 group">
                    {editingQuestion?.id === q.id ? (

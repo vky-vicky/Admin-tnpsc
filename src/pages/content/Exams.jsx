@@ -165,6 +165,24 @@ const Exams = () => {
     subject: '',
     materials: [{ material_id: '', num_questions: 1 }]
   });
+  const [creationMode, setCreationMode] = useState('auto'); // 'auto' or 'manual'
+
+  // Question Management State
+  const [managementExam, setManagementExam] = useState(null);
+  const [questions, setQuestions] = useState([]);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState(null);
+  const [isAddingQuestion, setIsAddingQuestion] = useState(false);
+  const [newQuestion, setNewQuestion] = useState({
+    question_text: '',
+    option_a: '',
+    option_b: '',
+    option_c: '',
+    option_d: '',
+    correct_answer: 'A',
+    explanation_text: '',
+    language: 'tamil'
+  });
 
   useEffect(() => {
     setSearchParams({ type: examType.toLowerCase() });
@@ -214,14 +232,18 @@ const Exams = () => {
       const payload = {
         ...formData,
         duration_minutes: parseInt(formData.duration_minutes) || 180,
-        exam_type: examType, // Sending MOCK_EXAM or REAL_EXAM
-        materials: validMaterials.map(m => ({
+        exam_type: examType,
+        materials: creationMode === 'auto' ? validMaterials.map(m => ({
           material_id: parseInt(m.material_id),
           num_questions: parseInt(m.num_questions)
-        }))
+        })) : []
       };
 
-      await adminService.manageExams.createReal(payload);
+      if (creationMode === 'auto') {
+        await adminService.manageExams.createReal(payload);
+      } else {
+        await adminService.manageExams.createExam(payload);
+      }
       toast.success(`${examType.replace('_', ' ')} Created`, 'The exam has been successfully configured and listed.');
       setView('list');
       fetchExams();
@@ -254,6 +276,66 @@ const Exams = () => {
     }
   };
 
+  // Question Management Logic
+  const handleManage = async (exam) => {
+    setManagementExam(exam);
+    setReviewLoading(true);
+    try {
+      const res = await adminService.manageExams.getExamDetailWithQuestions(exam.id);
+      setQuestions(res.questions || []);
+      window.scrollTo(0, 0);
+    } catch (err) {
+      toast.error('Load Error', 'Could not fetch exam questions.');
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  const handleUpdateQuestion = async (e) => {
+    e.preventDefault();
+    try {
+      await adminService.manageExams.updateQuestion(editingQuestion.id, editingQuestion);
+      setQuestions(questions.map(q => q.id === editingQuestion.id ? editingQuestion : q));
+      setEditingQuestion(null);
+      toast.success('Question Saved', 'Changes have been recorded successfully.');
+    } catch (err) {
+      toast.error('Save Failed', 'Could not update the question.');
+    }
+  };
+
+  const handleDeleteQuestion = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this question?')) return;
+    try {
+      await adminService.manageExams.deleteQuestion(id);
+      setQuestions(questions.filter(q => q.id !== id));
+      toast.success('Question Deleted', 'Item removed from the exam.');
+    } catch (err) {
+      toast.error('Delete Failed', 'Could not remove the question.');
+    }
+  };
+
+  const handleAddQuestion = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await adminService.manageExams.addQuestion(managementExam.id, newQuestion);
+      setQuestions([...questions, res.data || res]);
+      setIsAddingQuestion(false);
+      setNewQuestion({
+        question_text: '',
+        option_a: '',
+        option_b: '',
+        option_c: '',
+        option_d: '',
+        correct_answer: 'A',
+        explanation_text: '',
+        language: 'tamil'
+      });
+      toast.success('Question Added', 'New question has been appended.');
+    } catch (err) {
+      toast.error('Add Failed', 'Could not append the new question.');
+    }
+  };
+
   const filteredExams = exams.filter(e => 
     e.exam_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     e.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -282,6 +364,166 @@ const Exams = () => {
       )}
 
       {/* Premium Header & Toggle */}
+      {managementExam ? (
+          <div className="space-y-8 animate-fade-in">
+              <div className="flex items-center justify-between">
+                  <button onClick={() => setManagementExam(null)} className="flex items-center gap-2 text-slate-500 hover:text-blue-500 font-bold transition-all">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                      Back to Hub
+                  </button>
+                  <div className="text-right">
+                      <h2 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">{managementExam.exam_name}</h2>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Management Mode</p>
+                  </div>
+              </div>
+
+              {reviewLoading ? (
+                  <div className="py-32 text-center animate-pulse font-black text-slate-400 uppercase tracking-widest text-xs">
+                      Synchronizing with Question Pool...
+                  </div>
+              ) : (
+                  <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                          <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Question Pool ({questions.length})</h3>
+                          <button 
+                            onClick={() => setIsAddingQuestion(true)}
+                            className="px-6 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
+                          >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
+                              New Question
+                          </button>
+                      </div>
+
+                      {isAddingQuestion && (
+                          <div className="bg-blue-50/50 dark:bg-blue-900/10 border-2 border-dashed border-blue-200 dark:border-blue-800 rounded-3xl p-8 animate-scale-up">
+                              <h4 className="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-6">Add New Manual Question</h4>
+                              <form onSubmit={handleAddQuestion} className="space-y-6">
+                                  <textarea 
+                                      required rows="3"
+                                      placeholder="Type your question here..."
+                                      className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500"
+                                      value={newQuestion.question_text}
+                                      onChange={(e) => setNewQuestion({...newQuestion, question_text: e.target.value})}
+                                  />
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      {['a', 'b', 'c', 'd'].map(opt => (
+                                          <div key={opt}>
+                                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Option {opt.toUpperCase()}</label>
+                                              <input 
+                                                  required
+                                                  className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500"
+                                                  value={newQuestion[`option_${opt}`]}
+                                                  onChange={(e) => setNewQuestion({...newQuestion, [`option_${opt}`]: e.target.value})}
+                                              />
+                                          </div>
+                                      ))}
+                                  </div>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                       <div>
+                                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Correct Answer</label>
+                                           <select 
+                                               className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                                               value={newQuestion.correct_answer}
+                                               onChange={(e) => setNewQuestion({...newQuestion, correct_answer: e.target.value})}
+                                           >
+                                               <option value="A">Option A</option>
+                                               <option value="B">Option B</option>
+                                               <option value="C">Option C</option>
+                                               <option value="D">Option D</option>
+                                           </select>
+                                       </div>
+                                       <div>
+                                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Explanation (Optional)</label>
+                                           <input 
+                                               className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500"
+                                               value={newQuestion.explanation_text}
+                                               onChange={(e) => setNewQuestion({...newQuestion, explanation_text: e.target.value})}
+                                           />
+                                       </div>
+                                  </div>
+                                  <div className="flex justify-end gap-3 pt-4 border-t border-blue-100 dark:border-blue-900/30">
+                                      <button type="button" onClick={() => setIsAddingQuestion(false)} className="px-6 py-2 text-slate-500 font-bold uppercase text-[10px] tracking-widest">Cancel</button>
+                                      <button type="submit" className="px-10 py-3 bg-blue-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest shadow-xl shadow-blue-500/20">Add Question</button>
+                                  </div>
+                              </form>
+                          </div>
+                      )}
+
+                      <div className="space-y-4">
+                          {questions.map((q, idx) => (
+                              <div key={q.id} className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 group">
+                                 {editingQuestion?.id === q.id ? (
+                                     <form onSubmit={handleUpdateQuestion} className="space-y-4">
+                                         <textarea 
+                                           className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                                           value={editingQuestion.question_text}
+                                           onChange={(e) => setEditingQuestion({...editingQuestion, question_text: e.target.value})}
+                                         />
+                                         <div className="grid grid-cols-2 gap-4">
+                                             {['a', 'b', 'c', 'd'].map(opt => (
+                                                 <div key={opt}>
+                                                     <label className="text-[10px] font-black uppercase mb-1 block">Option {opt.toUpperCase()}</label>
+                                                     <input 
+                                                       className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                                                       value={editingQuestion[`option_${opt}`]}
+                                                       onChange={(e) => setEditingQuestion({...editingQuestion, [`option_${opt}`]: e.target.value})}
+                                                     />
+                                                 </div>
+                                             ))}
+                                         </div>
+                                         <div className="grid grid-cols-2 gap-4">
+                                              <div>
+                                                  <label className="text-[10px] font-black uppercase mb-1 block">Correct Answer</label>
+                                                  <select 
+                                                      className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                                                      value={editingQuestion.correct_answer}
+                                                      onChange={(e) => setEditingQuestion({...editingQuestion, correct_answer: e.target.value})}
+                                                  >
+                                                      <option value="A">A</option>
+                                                      <option value="B">B</option>
+                                                      <option value="C">C</option>
+                                                      <option value="D">D</option>
+                                                  </select>
+                                              </div>
+                                              <div className="flex items-end justify-end gap-2">
+                                                  <button type="button" onClick={() => setEditingQuestion(null)} className="px-4 py-2 text-slate-500 font-bold">Cancel</button>
+                                                  <button type="submit" className="px-6 py-2 bg-blue-600 text-white font-bold rounded-xl">Save Question</button>
+                                              </div>
+                                         </div>
+                                     </form>
+                                 ) : (
+                                     <div className="flex justify-between gap-6">
+                                         <div className="flex-1">
+                                             <div className="flex items-center gap-3 mb-3">
+                                                 <span className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-slate-500 text-sm">{idx + 1}</span>
+                                                 <p className="font-bold text-slate-800 dark:text-slate-100">{q.question_text}</p>
+                                             </div>
+                                             <div className="grid grid-cols-2 gap-x-8 gap-y-2 pl-11">
+                                                 {['a', 'b', 'c', 'd'].map(opt => (
+                                                     <p key={opt} className={`text-sm ${q.correct_answer === opt.toUpperCase() ? 'text-emerald-500 font-bold' : 'text-slate-500'}`}>
+                                                         {opt.toUpperCase()}: {q[`option_${opt}`]}
+                                                     </p>
+                                                 ))}
+                                             </div>
+                                         </div>
+                                         <div className="flex flex-col gap-2">
+                                             <button onClick={() => setEditingQuestion(q)} className="p-2 text-slate-400 hover:text-blue-500 transition-all shadow-sm rounded-lg border border-slate-100 dark:border-slate-800">
+                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                             </button>
+                                             <button onClick={() => handleDeleteQuestion(q.id)} className="p-2 text-slate-400 hover:text-red-500 transition-all shadow-sm rounded-lg border border-slate-100 dark:border-slate-800">
+                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                             </button>
+                                         </div>
+                                     </div>
+                                 )}
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+              )}
+          </div>
+      ) : (
+        <>
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
           <h1 className="text-4xl font-black text-slate-800 dark:text-white tracking-tight">
@@ -401,19 +643,28 @@ const Exams = () => {
                                     {exam.duration_minutes || '0'} Mins
                                 </div>
                             </div>
-                            
-                            <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
-                                <div className="flex items-center gap-2">
-                                    <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50"></div>
-                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-tighter">Status: Active</span>
-                                </div>
+                            <div className="flex flex-col gap-4 mt-auto pt-6 border-t border-slate-100 dark:border-slate-800">
                                 <button 
-                                    onClick={() => setSelectedExam(exam)}
-                                    className="text-xs font-black text-blue-500 hover:text-blue-400 uppercase tracking-widest flex items-center gap-1"
+                                    onClick={() => handleManage(exam)}
+                                    className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
                                 >
-                                    Manage
-                                    <svg className="w-3 h-3 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                    Manage Questions
                                 </button>
+                                
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50"></div>
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Status: Active</span>
+                                    </div>
+                                    <button 
+                                        onClick={() => setSelectedExam(exam)}
+                                        className="text-[10px] font-black text-blue-500 hover:text-blue-400 uppercase tracking-widest flex items-center gap-1"
+                                    >
+                                        ID Instructions
+                                        <svg className="w-3 h-3 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ))
@@ -511,66 +762,99 @@ const Exams = () => {
 
                     <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-black text-slate-800 dark:text-white">Question Sources</h3>
-                            <button 
-                                type="button" 
-                                onClick={() => setFormData({...formData, materials: [...formData.materials, { material_id: '', num_questions: 1 }]})}
-                                className="text-blue-500 hover:text-blue-400 font-black text-sm uppercase tracking-widest flex items-center gap-2"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                Add Material
-                            </button>
+                            <h3 className="text-xl font-black text-slate-800 dark:text-white">Creation Method</h3>
+                            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                                <button 
+                                    type="button"
+                                    onClick={() => setCreationMode('auto')}
+                                    className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${creationMode === 'auto' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-sm' : 'text-slate-500'}`}
+                                >
+                                    AI Auto-Gen
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={() => setCreationMode('manual')}
+                                    className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${creationMode === 'manual' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-sm' : 'text-slate-500'}`}
+                                >
+                                    Manual Shell
+                                </button>
+                            </div>
                         </div>
-                        
-                        <div className="space-y-4">
-                            {formData.materials.map((m, idx) => (
-                                <div key={idx} className="flex gap-4 items-end animate-fade-in">
-                                    <div className="flex-1">
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Select Source Study Material</label>
-                                        <select 
-                                            required
-                                            className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 appearance-none shadow-sm"
-                                            value={m.material_id}
-                                            onChange={(e) => {
-                                                const updated = [...formData.materials];
-                                                updated[idx].material_id = e.target.value;
-                                                setFormData({...formData, materials: updated});
-                                            }}
-                                        >
-                                            <option value="">Select a study material...</option>
-                                            {materials.map(mat => (
-                                                <option key={mat.id} value={mat.id}>{mat.title} (#{mat.id})</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="w-32">
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Questions</label>
-                                        <input 
-                                            type="number" required
-                                            className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                                            value={m.num_questions}
-                                            onChange={(e) => {
-                                                const updated = [...formData.materials];
-                                                updated[idx].num_questions = e.target.value;
-                                                setFormData({...formData, materials: updated});
-                                            }}
-                                        />
-                                    </div>
-                                    {formData.materials.length > 1 && (
-                                        <button 
-                                            type="button" 
-                                            onClick={() => {
-                                                const updated = formData.materials.filter((_, i) => i !== idx);
-                                                setFormData({...formData, materials: updated});
-                                            }}
-                                            className="p-4 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-colors"
-                                        >
-                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                        </button>
-                                    )}
+
+                        {creationMode === 'auto' ? (
+                            <div className="animate-fade-in space-y-6">
+                                <div className="flex justify-between items-center">
+                                    <p className="text-sm font-medium text-slate-500 italic">Select source materials for automated question generation.</p>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setFormData({...formData, materials: [...formData.materials, { material_id: '', num_questions: 1 }]})}
+                                        className="text-blue-500 hover:text-blue-400 font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        Add Material
+                                    </button>
                                 </div>
-                            ))}
-                        </div>
+                                <div className="space-y-4">
+                                    {formData.materials.map((m, idx) => (
+                                        <div key={idx} className="flex gap-4 items-end animate-fade-in">
+                                            <div className="flex-1">
+                                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Select Source Study Material</label>
+                                                <select 
+                                                    required={creationMode === 'auto'}
+                                                    className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 appearance-none shadow-sm"
+                                                    value={m.material_id}
+                                                    onChange={(e) => {
+                                                        const updated = [...formData.materials];
+                                                        updated[idx].material_id = e.target.value;
+                                                        setFormData({...formData, materials: updated});
+                                                    }}
+                                                >
+                                                    <option value="">Select a study material...</option>
+                                                    {materials.map(mat => (
+                                                        <option key={mat.id} value={mat.id}>{mat.title} (#{mat.id})</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="w-32">
+                                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Questions</label>
+                                                <input 
+                                                    type="number" required={creationMode === 'auto'}
+                                                    className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                                                    value={m.num_questions}
+                                                    onChange={(e) => {
+                                                        const updated = [...formData.materials];
+                                                        updated[idx].num_questions = e.target.value;
+                                                        setFormData({...formData, materials: updated});
+                                                    }}
+                                                />
+                                            </div>
+                                            {formData.materials.length > 1 && (
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => {
+                                                        const updated = formData.materials.filter((_, i) => i !== idx);
+                                                        setFormData({...formData, materials: updated});
+                                                    }}
+                                                    className="p-4 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-colors"
+                                                >
+                                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 p-8 rounded-3xl animate-fade-in flex items-center gap-6">
+                                <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-800/40 flex items-center justify-center shrink-0">
+                                    <svg className="w-8 h-8 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-amber-900 dark:text-amber-200 font-black uppercase text-xs tracking-widest">Empty Exam Shell</p>
+                                    <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">This will create a draft exam with no questions. You can add questions manually later via the <strong>Review Portal</strong>.</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex justify-end gap-4 pt-6">
@@ -590,6 +874,8 @@ const Exams = () => {
                 </form>
             </div>
         </div>
+      )}
+        </>
       )}
 
       {/* Professional Deletion Modal */}
