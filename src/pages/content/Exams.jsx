@@ -299,7 +299,9 @@ const Exams = () => {
       setEditingQuestion(null);
       toast.success('Question Saved', 'Changes have been recorded successfully.');
     } catch (err) {
-      toast.error('Save Failed', 'Could not update the question.');
+      console.error("Save Error:", err);
+      const errorMsg = err.response?.data?.message || err.message || 'Could not update the question.';
+      toast.error(`Save Failed: ${errorMsg}`);
     }
   };
 
@@ -484,6 +486,16 @@ const Exams = () => {
                                                       <option value="C">C</option>
                                                       <option value="D">D</option>
                                                   </select>
+                                              </div>
+                                              <div className="md:col-span-2">
+                                                  <label className="text-[10px] font-black uppercase mb-1 block">Explanation</label>
+                                                  <textarea 
+                                                    className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                                                    rows="2"
+                                                    value={editingQuestion.explanation_text || ''}
+                                                    onChange={(e) => setEditingQuestion({...editingQuestion, explanation_text: e.target.value})}
+                                                    placeholder="Add an explanation for the correct answer..."
+                                                  />
                                               </div>
                                               <div className="flex items-end justify-end gap-2">
                                                   <button type="button" onClick={() => setEditingQuestion(null)} className="px-4 py-2 text-slate-500 font-bold">Cancel</button>

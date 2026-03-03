@@ -48,7 +48,7 @@ const UsersList = () => {
         search: searchTerm || undefined
       });
       
-      setUsers(data.users || []);
+      setUsers(data.data || []);
       setTotal(data.total || 0);
     } catch (error) {
       console.error("Failed to fetch users", error);
@@ -118,7 +118,7 @@ const UsersList = () => {
     setDetailsModal({ isOpen: true, loading: true, data: null });
     try {
       const data = await adminService.getUserDetail(userId);
-      setDetailsModal({ isOpen: true, loading: false, data });
+      setDetailsModal({ isOpen: true, loading: false, data: data.data });
     } catch (error) {
       console.error("Failed to fetch user details", error);
       toast.error('Error', 'Failed to fetch user profiles');
@@ -195,8 +195,8 @@ const UsersList = () => {
                   <div className="text-slate-600 dark:text-slate-400 text-sm font-medium">{user.email}</div>
                   <div className="text-xs text-slate-500 dark:text-slate-500">{user.phone_number || 'No phone'}</div>
                 </td>
-                <td className="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm text-center">
-                  {user.joined_date ? new Date(user.joined_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                <td className="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm italic">
+                  {user.created_at ? new Date(user.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
                 </td>
                 <td className="px-6 py-4 text-right space-x-4">
                   {!user.is_banned ? (
@@ -299,19 +299,19 @@ const UsersList = () => {
                   {/* Profile Header */}
                   <div className="flex flex-col items-center text-center space-y-4">
                     <div className="w-24 h-24 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center border-4 border-white dark:border-slate-800 shadow-lg overflow-hidden">
-                      {detailsModal.data.user_info.profile_pic ? (
-                        <img src={detailsModal.data.user_info.profile_pic} alt="" className="w-full h-full object-cover" />
+                      {detailsModal.data.profile_pic ? (
+                        <img src={detailsModal.data.profile_pic} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-3xl font-bold text-blue-600">{detailsModal.data.user_info.name?.charAt(0)}</span>
+                        <span className="text-3xl font-bold text-blue-600">{detailsModal.data.name?.charAt(0)}</span>
                       )}
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold text-slate-900 dark:text-white leading-tight">{detailsModal.data.user_info.name}</h3>
-                      <p className="text-slate-500 dark:text-slate-400 font-medium">#{detailsModal.data.user_info.id} • {detailsModal.data.user_info.email}</p>
+                      <h3 className="text-2xl font-bold text-slate-900 dark:text-white leading-tight">{detailsModal.data.name}</h3>
+                      <p className="text-slate-500 dark:text-slate-400 font-medium">#{detailsModal.data.id} • {detailsModal.data.email}</p>
                     </div>
                     <div className="flex gap-2">
-                       <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${detailsModal.data.user_info.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>{detailsModal.data.user_info.role}</span>
-                       {detailsModal.data.moderation.is_banned && <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-red-100 text-red-700">Restricted</span>}
+                       <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${detailsModal.data.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>{detailsModal.data.role}</span>
+                       {detailsModal.data.is_banned ? <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-red-100 text-red-700">Restricted</span> : null}
                     </div>
                   </div>
 
@@ -319,15 +319,17 @@ const UsersList = () => {
                   <div className="grid grid-cols-3 gap-4">
                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl text-center border border-slate-100 dark:border-slate-800 shadow-sm">
                       <div className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">XP Points</div>
-                      <div className="text-2xl font-black text-blue-600 dark:text-blue-400">{detailsModal.data.stats.xp}</div>
+                      <div className="text-2xl font-black text-blue-600 dark:text-blue-400">{detailsModal.data.xp || 0}</div>
                     </div>
                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl text-center border border-slate-100 dark:border-slate-800 shadow-sm">
                       <div className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Daily Streak</div>
-                      <div className="text-2xl font-black text-amber-500">{detailsModal.data.stats.streak_count} 🔥</div>
+                      <div className="text-2xl font-black text-amber-500">{detailsModal.data.streak_count || 0} 🔥</div>
                     </div>
                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl text-center border border-slate-100 dark:border-slate-800 shadow-sm">
-                      <div className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Tests Taken</div>
-                      <div className="text-2xl font-black text-emerald-500">{detailsModal.data.stats.total_tests_taken}</div>
+                      <div className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1">Joined At</div>
+                      <div className="text-xs font-black text-slate-800 dark:text-white">
+                        {detailsModal.data.created_at ? new Date(detailsModal.data.created_at).toLocaleDateString() : 'N/A'}
+                      </div>
                     </div>
                   </div>
 
@@ -335,7 +337,7 @@ const UsersList = () => {
                   <div className="space-y-3">
                     <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest pl-1">About User</h4>
                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl text-slate-700 dark:text-slate-300 italic border-l-4 border-blue-500">
-                      {detailsModal.data.user_info.about || "This user hasn't added a bio yet."}
+                      {detailsModal.data.about || "This user hasn't added a bio yet."}
                     </div>
                   </div>
 
@@ -343,73 +345,64 @@ const UsersList = () => {
                   <div className="grid grid-cols-2 gap-y-6 gap-x-8">
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Exam Category</p>
-                      <p className="text-slate-800 dark:text-slate-200 font-semibold">{detailsModal.data.user_info.exam_type || 'General'}</p>
+                      <p className="text-slate-800 dark:text-slate-200 font-semibold">{detailsModal.data.exam_type || 'General'}</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phone Presence</p>
-                      <p className="text-slate-800 dark:text-slate-200 font-semibold">{detailsModal.data.user_info.phone || 'Not Linked'}</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phone Number</p>
+                      <p className="text-slate-800 dark:text-slate-200 font-semibold">{detailsModal.data.phone_number || 'Not Linked'}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Last Activity</p>
                       <p className="text-slate-800 dark:text-slate-200 font-semibold">
-                        {detailsModal.data.stats.last_activity ? new Date(detailsModal.data.stats.last_activity).toLocaleString() : 'Never'}
+                        {detailsModal.data.last_activity_date ? new Date(detailsModal.data.last_activity_date).toLocaleString() : 'Never'}
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Onboarding</p>
-                      <p className="text-slate-800 dark:text-slate-200 font-semibold">Step {detailsModal.data.user_info.onboarding_step}/3 Completed</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</p>
+                      <p className="text-slate-800 dark:text-slate-200 font-semibold">{detailsModal.data.is_banned ? 'Banned' : 'Active'}</p>
                     </div>
                   </div>
 
                   {/* Community Engagement */}
                   <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                     <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest pl-1">Social Footprint</h4>
-                    <div className="space-y-3">
-                      {[
-                        { label: 'Total Posts', val: detailsModal.data.stats.total_posts, icon: '📝' },
-                        { label: 'Likes Gained', val: detailsModal.data.stats.likes_received, icon: '❤️' },
-                        { label: 'Comments Gained', val: detailsModal.data.stats.comments_received, icon: '💬' }
-                      ].map(item => (
-                        <div key={item.label} className="flex justify-between items-center p-3 bg-white dark:bg-slate-800/20 rounded-lg border border-slate-50 dark:border-slate-800 hover:shadow-sm transition-all">
-                          <span className="text-slate-600 dark:text-slate-400 font-medium">{item.icon} {item.label}</span>
-                          <span className="font-bold text-slate-900 dark:text-white">{item.val}</span>
-                        </div>
-                      ))}
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl text-center text-slate-400 text-xs italic">
+                      Detailed social stats (posts, likes, comments) are currently only available in the Community Analytics dashboard.
                     </div>
                   </div>
 
                   {/* Moderation Warning */}
-                  {detailsModal.data.moderation.is_banned && (
+                  {detailsModal.data.is_banned ? (
                     <div className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl space-y-2">
                       <h4 className="text-red-700 dark:text-red-400 font-bold flex items-center gap-2">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                         Ban Details
                       </h4>
                       <p className="text-red-600/80 dark:text-red-400/80 text-sm font-medium leading-relaxed">
-                        Reason: {detailsModal.data.moderation.ban_reason || 'No specific reason documented.'}
+                        Reason: {detailsModal.data.ban_reason || 'No specific reason documented.'}
                       </p>
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
                 <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-4">
-                  {!detailsModal.data.moderation.is_banned ? (
+                  {!detailsModal.data.is_banned ? (
                     <button 
-                      onClick={(e) => openModerationModal(detailsModal.data.user_info, 'BAN', e)}
+                      onClick={(e) => openModerationModal(detailsModal.data, 'BAN', e)}
                       className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-amber-600/20 transition-all hover:-translate-y-0.5"
                     >
                       Restrict User
                     </button>
                   ) : (
                     <button 
-                      onClick={(e) => openModerationModal(detailsModal.data.user_info, 'UNBAN', e)}
+                      onClick={(e) => openModerationModal(detailsModal.data, 'UNBAN', e)}
                       className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-emerald-600/20 transition-all hover:-translate-y-0.5"
                     >
                       Restore Access
                     </button>
                   )}
                   <button 
-                    onClick={() => openDeleteModal(detailsModal.data.user_info.id, detailsModal.data.user_info.name)}
+                    onClick={() => openDeleteModal(detailsModal.data.id, detailsModal.data.name)}
                     className="px-6 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 font-bold rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 transition-all"
                   >
                     Delete Permanently

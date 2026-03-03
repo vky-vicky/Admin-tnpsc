@@ -51,12 +51,12 @@ export const adminService = {
     // Admin Review Flow
     listPending: () => api.get("/admin/exams/pending"),
     getExamDetailWithQuestions: (id) => api.get(`/admin/exams/${id}`),
-    updateExam: (id, data) => api.patch(`/admin/exams/${id}`, data),
+    updateExam: (id, data) => api.post(`/admin/exams/${id}`, data),
     publishExam: (id) => api.post(`/admin/exams/${id}/publish`),
 
     // Question Management
     addQuestion: (examId, data) => api.post(`/admin/exams/${examId}/questions`, data),
-    updateQuestion: (id, data) => api.patch(`/admin/questions/${id}`, data),
+    updateQuestion: (id, data) => api.post(`/admin/question-update/${id}`, data),
     deleteQuestion: (id) => api.delete(`/admin/questions/${id}`),
     getQuestionReports: (status) =>
       api.get("/questions/reports", { params: { status } }),
