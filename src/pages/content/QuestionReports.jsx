@@ -8,12 +8,20 @@ const QuestionReports = () => {
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState('PENDING'); // PENDING, RESOLVED, REJECTED
-    const [actionModal, setActionModal] = useState({
+    const [editModal, setEditModal] = useState({
         isOpen: false,
-        reportId: null,
-        action: null, // RESOLVE or REJECT
-        questionText: ''
+        questionId: null,
+        formData: {
+            question_text: '',
+            option_a: '',
+            option_b: '',
+            option_c: '',
+            option_d: '',
+            correct_answer: '',
+            explanation_text: ''
+        }
     });
+    const [editLoading, setEditLoading] = useState(false);
 
     const fetchReports = useCallback(async () => {
         setLoading(true);
@@ -41,6 +49,46 @@ const QuestionReports = () => {
             toast.error('Action Failed', 'Could not process the report action.');
         } finally {
             setActionModal({ ...actionModal, isOpen: false });
+        }
+    };
+
+    const handleEditClick = async (questionId) => {
+        setEditLoading(true);
+        try {
+            const res = await adminService.manageExams.getQuestionDetail(questionId);
+            const q = res.data || res;
+            setEditModal({
+                isOpen: true,
+                questionId,
+                formData: {
+                    question_text: q.question_text || '',
+                    option_a: q.option_a || '',
+                    option_b: q.option_b || '',
+                    option_c: q.option_c || '',
+                    option_d: q.option_d || '',
+                    correct_answer: q.correct_answer || 'A',
+                    explanation_text: q.explanation_text || ''
+                }
+            });
+        } catch (err) {
+            toast.error('Load Error', 'Could not fetch question details.');
+        } finally {
+            setEditLoading(false);
+        }
+    };
+
+    const handleUpdateQuestion = async (e) => {
+        e.preventDefault();
+        setEditLoading(true);
+        try {
+            await adminService.manageExams.updateQuestion(editModal.questionId, editModal.formData);
+            toast.success('Question Updated', 'Changes have been saved successfully.');
+            setEditModal({ ...editModal, isOpen: false });
+            fetchReports(); // Refresh to see updated text if visible
+        } catch (err) {
+            toast.error('Update Failed', 'Could not save question changes.');
+        } finally {
+            setEditLoading(false);
         }
     };
 
@@ -83,7 +131,7 @@ const QuestionReports = () => {
                         onClick={fetchReports}
                         className="p-2 text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all ml-2"
                     >
-                        <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        <svg className={`w-5 h-5 ${loading || editLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                     </button>
                 </div>
             </div>
@@ -167,6 +215,13 @@ const QuestionReports = () => {
                                             {report.status === 'PENDING' ? (
                                                 <div className="flex justify-end gap-2">
                                                     <button
+                                                        onClick={() => handleEditClick(report.question_id)}
+                                                        className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all border border-blue-100 dark:border-blue-900/30 shadow-sm"
+                                                        title="Edit Question"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                                    </button>
+                                                    <button
                                                         onClick={() => setActionModal({ isOpen: true, reportId: report.id, action: 'RESOLVE', questionText: report.question_text })}
                                                         className="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition-all border border-emerald-100 dark:border-emerald-900/30 shadow-sm"
                                                         title="Resolve"
@@ -192,6 +247,81 @@ const QuestionReports = () => {
                     )}
                 </div>
             </div>
+
+            {/* Edit Question Modal */}
+            {editModal.isOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl overflow-hidden animate-scale-up">
+                        <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Edit Reported Question</h3>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Direct Rectification Mode</p>
+                            </div>
+                            <button onClick={() => setEditModal({ ...editModal, isOpen: false })} className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleUpdateQuestion} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Question Text</label>
+                                <textarea 
+                                    className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800 dark:text-slate-200"
+                                    rows="3" required
+                                    value={editModal.formData.question_text}
+                                    onChange={(e) => setEditModal({ ...editModal, formData: { ...editModal.formData, question_text: e.target.value }})}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {['a', 'b', 'c', 'd'].map(opt => (
+                                    <div key={opt} className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Option {opt.toUpperCase()}</label>
+                                        <input 
+                                            className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                                            value={editModal.formData[`option_${opt}`]} required
+                                            onChange={(e) => setEditModal({ ...editModal, formData: { ...editModal.formData, [`option_${opt}`]: e.target.value }})}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Correct Answer</label>
+                                    <select 
+                                        className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                                        value={editModal.formData.correct_answer}
+                                        onChange={(e) => setEditModal({ ...editModal, formData: { ...editModal.formData, correct_answer: e.target.value }})}
+                                    >
+                                        <option value="A">Option A</option>
+                                        <option value="B">Option B</option>
+                                        <option value="C">Option C</option>
+                                        <option value="D">Option D</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Explanation</label>
+                                    <input 
+                                        className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={editModal.formData.explanation_text}
+                                        placeholder="Brief logic for the answer..."
+                                        onChange={(e) => setEditModal({ ...editModal, formData: { ...editModal.formData, explanation_text: e.target.value }})}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
+                                <button type="button" onClick={() => setEditModal({ ...editModal, isOpen: false })} className="px-6 py-2 text-slate-500 font-bold uppercase text-[10px] tracking-widest">Cancel</button>
+                                <button type="submit" disabled={editLoading} className="px-10 py-3 bg-blue-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest shadow-xl shadow-blue-500/20 flex items-center gap-2">
+                                    {editLoading && <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             <ConfirmModal
                 isOpen={actionModal.isOpen}

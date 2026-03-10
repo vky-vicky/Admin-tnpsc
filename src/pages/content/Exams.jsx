@@ -213,7 +213,7 @@ const Exams = () => {
 
   const fetchMaterials = async () => {
     try {
-      const data = await adminService.materials.listStudy();
+      const data = await adminService.materials.listStudy({ limit: 1000 });
       setMaterials(Array.isArray(data) ? data : (data.data || data.materials || []));
     } catch (err) {
       console.error("Error fetching materials:", err);
@@ -795,17 +795,28 @@ const Exams = () => {
 
                         {creationMode === 'auto' ? (
                             <div className="animate-fade-in space-y-6">
-                                <div className="flex justify-between items-center">
-                                    <p className="text-sm font-medium text-slate-500 italic">Select source materials for automated question generation.</p>
-                                    <button 
-                                        type="button" 
-                                        onClick={() => setFormData({...formData, materials: [...formData.materials, { material_id: '', num_questions: 1 }]})}
-                                        className="text-blue-500 hover:text-blue-400 font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                        Add Material
-                                    </button>
-                                </div>
+                                    <div className="flex gap-4 items-center">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => {
+                                                // Navigate to Study Materials page with upload view
+                                                // Since we are in a SPA, we can just use window.location or if we have navigate
+                                                window.location.href = '/dashboard/study-materials?view=create';
+                                            }}
+                                            className="text-amber-500 hover:text-amber-400 font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                            Upload New
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setFormData({...formData, materials: [...formData.materials, { material_id: '', num_questions: 1 }]})}
+                                            className="text-blue-500 hover:text-blue-400 font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            Add Material
+                                        </button>
+                                    </div>
                                 <div className="space-y-4">
                                     {formData.materials.map((m, idx) => (
                                         <div key={idx} className="flex gap-4 items-end animate-fade-in">

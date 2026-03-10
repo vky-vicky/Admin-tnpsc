@@ -56,6 +56,7 @@ export const adminService = {
 
     // Question Management
     addQuestion: (examId, data) => api.post(`/admin/exams/${examId}/questions`, data),
+    getQuestionDetail: (id) => api.get(`/admin/questions/${id}`),
     updateQuestion: (id, data) => api.post(`/admin/question-update/${id}`, data),
     deleteQuestion: (id) => api.delete(`/admin/questions/${id}`),
     getQuestionReports: (status) =>
@@ -76,7 +77,7 @@ export const adminService = {
   // Content Management
   materials: {
     // Study Materials
-    listStudy: () => api.get("/study-materials/"),
+    listStudy: (params = {}) => api.get("/study-materials/", { params }),
     createStudy: (formData) =>
       api.post("/study-materials/", formData, {
         headers: { "Content-Type": "multipart/form-data" },

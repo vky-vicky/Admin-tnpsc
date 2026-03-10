@@ -14,7 +14,7 @@ const StudyMaterials = () => {
   const [materials, setMaterials] = useState([]);
   const [groupedMaterials, setGroupedMaterials] = useState({});
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState('list'); // 'list', 'create', 'grouped'
+  const [view, setView] = useState(searchParams.get('view') || 'list'); // 'list', 'create', 'grouped'
   const [searchQuery, setSearchQuery] = useState(searchParam || '');
   
   // Pagination
@@ -67,7 +67,7 @@ const StudyMaterials = () => {
         const normalizedData = data.data || data || {};
         setGroupedMaterials(normalizedData);
       } else {
-        const data = await adminService.materials.listStudy();
+        const data = await adminService.materials.listStudy({ limit: 100 });
         setMaterials(Array.isArray(data) ? data : (data.data || data.materials || []));
       }
     } catch (err) {
