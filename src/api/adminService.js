@@ -39,7 +39,7 @@ export const adminService = {
     deleteNotification: (id) => api.delete(`/notifications/exams/${id}`),
 
     // Real Exams Management
-    listReal: (type) => api.get("/exams/", { params: { exam_type: type } }),
+    listReal: (params = {}) => api.get("/exams/", { params }),
     createReal: (data) => api.post("/exam/real-exam", data),
     deleteReal: (id) => api.delete(`/exam/real-exam/${id}`),
     getRealDetails: (id) => api.get(`/exams/${id}`),

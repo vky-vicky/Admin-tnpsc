@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { adminService } from '../../api/adminService';
 import { useToast } from '../../context/ToastContext';
+import { useGlobalExam } from '../../context/GlobalExamContext';
 
 import Pagination from '../../components/Pagination';
 import ConfirmModal from '../../components/ConfirmModal';
 
 const StudyMaterials = () => {
   const { toast } = useToast();
+  const { activeExamType } = useGlobalExam();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchParam = searchParams.get('search');
 
@@ -27,11 +29,12 @@ const StudyMaterials = () => {
     language: 'english',
     category: '',
     subject: '',
-    exam_type: 'TNPSC',
+    exam_type: activeExamType === 'ALL' ? 'TNPSC' : activeExamType,
     toughness_level: 'medium',
     uploaded_by: 1, 
     file: null
   });
+  const [uploading, setUploading] = useState(false);
 
   // Delete Confirmation State
   const [deleteModal, setDeleteModal] = useState({
@@ -50,10 +53,12 @@ const StudyMaterials = () => {
   }, [view, searchParam]);
 
   // Filter and Pagination (Only for list view)
-  const filteredMaterials = Array.isArray(materials) ? materials.filter(m => 
-    m.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    m.subject?.toLowerCase().includes(searchQuery.toLowerCase())
-  ) : [];
+  const filteredMaterials = Array.isArray(materials) ? materials.filter(m => {
+    const matchesSearch = m.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          m.subject?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesExam = activeExamType === 'ALL' || m.exam_type === activeExamType;
+    return matchesSearch && matchesExam;
+  }) : [];
   
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -65,6 +70,7 @@ const StudyMaterials = () => {
       if (view === 'grouped') {
         const data = await adminService.materials.getGroupedStudy();
         const normalizedData = data.data || data || {};
+        // Optional: you could filter grouped materials here if the API doesn't support it
         setGroupedMaterials(normalizedData);
       } else {
         const data = await adminService.materials.listStudy({ limit: 100 });
@@ -100,6 +106,7 @@ const StudyMaterials = () => {
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    setUploading(true);
     const data = new FormData();
     data.append('title', formData.title);
     data.append('language', formData.language);
@@ -127,6 +134,8 @@ const StudyMaterials = () => {
       fetchData(); 
     } catch (err) {
       toast.error('Upload failed', 'There was an error pushing the file to the cloud. Please try again.');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -299,8 +308,20 @@ const StudyMaterials = () => {
               />
             </div>
             <div className="md:col-span-2 flex justify-end gap-4 pt-4">
-              <button type="button" onClick={() => setView('list')} className="px-8 py-3 text-slate-500 font-black uppercase text-xs tracking-widest">Cancel</button>
-              <button type="submit" className="px-10 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl hover:opacity-90 transform active:scale-95 transition-all">Upload Material</button>
+              <button type="button" onClick={() => setView('list')} className="px-8 py-3 text-slate-500 font-black uppercase text-xs tracking-widest cursor-pointer hover:text-slate-700 transition-colors">Cancel</button>
+              <button 
+                type="submit" 
+                disabled={uploading}
+                className="px-10 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl hover:opacity-90 transform active:scale-95 transition-all cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-3"
+              >
+                {uploading && (
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                {uploading ? 'Uploading...' : 'Upload Material'}
+              </button>
             </div>
           </form>
         </div>

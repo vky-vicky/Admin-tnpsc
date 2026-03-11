@@ -83,6 +83,35 @@ const ModerationDashboard = () => {
     }
   };
 
+  const getGroupedReports = () => {
+    const groups = {};
+    reports.forEach(report => {
+      const key = `${report.content_type}_${report.content_id}`;
+      if (!groups[key]) {
+        groups[key] = {
+          content_id: report.content_id,
+          content_type: report.content_type,
+          content_owner: report.content_owner,
+          content_preview: report.content_preview,
+          status: report.status,
+          created_at: report.created_at, // Latest one
+          reports: [],
+          reasons: {}
+        };
+      }
+      groups[key].reports.push(report);
+      groups[key].reasons[report.reason] = (groups[key].reasons[report.reason] || 0) + 1;
+      
+      // Update to most recent timestamp if needed
+      if (new Date(report.created_at) > new Date(groups[key].created_at)) {
+        groups[key].created_at = report.created_at;
+      }
+    });
+    return Object.values(groups);
+  };
+
+  const groupedReports = getGroupedReports();
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -92,7 +121,7 @@ const ModerationDashboard = () => {
              <svg className="w-8 h-8 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
             Moderation Dashboard
           </h1>
-          <p className="text-slate-400 mt-1">Review and manage community reports</p>
+          <p className="text-slate-400 mt-1">Review and manage grouped community reports</p>
         </div>
         
         <div className="flex items-center gap-3">
@@ -147,19 +176,24 @@ const ModerationDashboard = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {reports.map((report) => (
+          {groupedReports.map((group) => (
             <div 
-              key={report.id}
+              key={`${group.content_type}_${group.content_id}`}
               className="group relative bg-slate-800/40 hover:bg-slate-800/60 transition-all duration-300 rounded-3xl border border-slate-700 flex flex-col shadow-xl overflow-hidden"
             >
               {/* Header Info */}
               <div className="p-5 border-b border-slate-800 flex items-center justify-between text-xs font-semibold tracking-tight">
-                <span className={`px-3 py-1 rounded-full border ${getStatusBadgeClass(report.status)}`}>
-                  {report.status}
-                </span>
+                <div className="flex items-center gap-2">
+                   <span className={`px-3 py-1 rounded-full border ${getStatusBadgeClass(group.status)}`}>
+                     {group.status}
+                   </span>
+                   <span className="bg-rose-500 text-white px-2 py-1 rounded-lg text-[10px] font-black">
+                     {group.reports.length} REPORTS
+                   </span>
+                </div>
                 <span className="text-slate-500 flex items-center gap-1.5 uppercase">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  {formatDate(report.created_at)}
+                  {formatDate(group.created_at)}
                 </span>
               </div>
 
@@ -167,59 +201,62 @@ const ModerationDashboard = () => {
               <div className="p-6 flex-1 flex flex-col gap-5">
                 <div className="space-y-3">
                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-500/10 px-2 py-0.5 rounded-md">{report.content_type}</span>
+                      <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-500/10 px-2 py-0.5 rounded-md">{group.content_type} #{group.content_id}</span>
                       <span className="text-slate-600 font-bold">•</span>
-                      <span className="text-xs text-white font-bold opacity-70">By {report.content_owner}</span>
+                      <span className="text-xs text-white font-bold opacity-70">By {group.content_owner}</span>
                    </div>
                    <div className="relative group/content">
                       <div className="absolute -left-2 top-0 bottom-0 w-1 bg-rose-500/20 rounded-full group-hover/content:bg-rose-500/50 transition-colors"></div>
                       <p className="text-slate-300 text-sm italic font-medium leading-relaxed pl-3 line-clamp-4">
-                        "{report.content_preview}"
+                        "{group.content_preview}"
                       </p>
                    </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                   <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-700/50 transition-colors hover:border-slate-600">
-                      <p className="text-[10px] text-slate-500 uppercase font-black tracking-tighter mb-1.5 opacity-60">Violation Reason</p>
-                      <p className="text-xs text-white font-bold line-clamp-1">{report.reason}</p>
-                   </div>
-                   <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-700/50 transition-colors hover:border-slate-600">
-                      <p className="text-[10px] text-slate-500 uppercase font-black tracking-tighter mb-1.5 opacity-60">Reporting User</p>
-                      <p className="text-xs text-white font-bold line-clamp-1">{report.reporter_name}</p>
-                   </div>
+                <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-700/50">
+                  <p className="text-[10px] text-slate-500 uppercase font-black tracking-tighter mb-2 opacity-60">Violation Summary</p>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(group.reasons).map(([reason, count]) => (
+                      <div key={reason} className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700/50">
+                        <span className="text-xs text-white font-bold">{reason}</span>
+                        <span className="w-5 h-5 flex items-center justify-center bg-rose-500 text-[10px] font-black text-white rounded-md">{count}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                {report.comment && (
-                  <div className="bg-amber-500/5 border border-amber-500/20 px-4 py-3 rounded-2xl">
-                    <p className="text-[10px] text-amber-500/80 uppercase font-bold tracking-widest mb-1">User's Note</p>
-                    <p className="text-xs text-amber-100/90 leading-relaxed">{report.comment}</p>
+                {group.reports.some(r => r.comment) && (
+                  <div className="bg-amber-500/5 border border-amber-500/20 px-4 py-3 rounded-2xl max-h-24 overflow-y-auto custom-scrollbar">
+                    <p className="text-[10px] text-amber-500/80 uppercase font-bold tracking-widest mb-1 sticky top-0 bg-slate-900/0">Recent User Notes</p>
+                    {group.reports.filter(r => r.comment).slice(0, 3).map((r, idx) => (
+                      <p key={idx} className="text-xs text-amber-100/90 leading-relaxed mb-1 last:mb-0">• {r.comment}</p>
+                    ))}
                   </div>
                 )}
               </div>
 
               {/* Action Bar */}
-              {report.status === 'PENDING' && (
+              {group.status === 'PENDING' && (
                 <div className="px-6 pb-6 pt-2 flex gap-3">
                   <button 
                     onClick={() => {
-                      setSelectedReport(report);
+                      setSelectedReport(group.reports[0]); // Take action based on one, backend handles rest
                       setActionData({ ...actionData, action: 'IGNORE' });
                       setIsActionModalOpen(true);
                     }}
-                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs py-3 rounded-2xl font-bold transition-all border border-slate-600 shadow-xl"
+                    className="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs py-3 rounded-2xl font-bold transition-all border border-slate-600 shadow-xl cursor-pointer"
                   >
-                    Dismiss
+                    Dismiss All
                   </button>
                   <button 
                      onClick={() => {
-                      setSelectedReport(report);
+                      setSelectedReport(group.reports[0]);
                       setActionData({ ...actionData, action: 'DELETE_CONTENT' });
                       setIsActionModalOpen(true);
                     }}
-                    className="flex-1 bg-rose-500 hover:bg-rose-600 text-white text-xs py-3 rounded-2xl font-bold transition-all shadow-xl shadow-rose-500/20"
+                    className="flex-1 bg-rose-500 hover:bg-rose-600 text-white text-xs py-3 rounded-2xl font-bold transition-all shadow-xl shadow-rose-500/20 cursor-pointer"
                   >
-                    Moderate
+                    Moderate Post
                   </button>
                 </div>
               )}

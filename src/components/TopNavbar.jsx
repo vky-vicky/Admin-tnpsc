@@ -1,8 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { adminService } from '../api/adminService';
 import { useNavigate } from 'react-router-dom';
+import { useGlobalExam } from '../context/GlobalExamContext';
+
+const EXAM_TYPE_OPTIONS = [
+  { value: 'ALL', label: 'All Exams' },
+  { value: 'TNPSC', label: 'TNPSC General' },
+  { value: 'TNPSC_GROUP_1', label: 'Group 1' },
+  { value: 'TNPSC_GROUP_2', label: 'Group 2' },
+  { value: 'TNPSC_GROUP_4', label: 'Group 4' },
+  { value: 'TET', label: 'TET' },
+  { value: 'POLICE', label: 'Police Exam' }
+];
 
 const TopNavbar = ({ onToggleSidebar, onToggleTheme, isDark }) => {
+  const { activeExamType, setActiveExamType } = useGlobalExam();
+  const [showExamDropdown, setShowExamDropdown] = useState(false);
+  const examDropdownRef = useRef(null);
+
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [user, setUser] = useState({ name: 'Admin User', role: 'Administrator' });
@@ -27,6 +42,9 @@ const TopNavbar = ({ onToggleSidebar, onToggleTheme, isDark }) => {
       }
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         setShowResults(false);
+      }
+      if (examDropdownRef.current && !examDropdownRef.current.contains(event.target)) {
+        setShowExamDropdown(false);
       }
       if (profileRef.current && !profileRef.current.contains(event.target)) {
         setShowProfileMenu(false);
@@ -149,6 +167,38 @@ const TopNavbar = ({ onToggleSidebar, onToggleTheme, isDark }) => {
            <span className="hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer">Admin</span>
            <span className="mx-2">/</span>
            <span className="font-medium text-slate-800 dark:text-slate-200">Dashboard</span>
+        </div>
+
+        {/* Global Exam Selector */}
+        <div className="hidden lg:flex items-center ml-4 pl-4 border-l border-slate-200 dark:border-slate-800 relative" ref={examDropdownRef}>
+            <span className="text-xs font-semibold text-slate-400 mr-2 uppercase tracking-wide">Viewing Data For:</span>
+            <button 
+               onClick={() => setShowExamDropdown(!showExamDropdown)}
+               className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-sm font-bold"
+            >
+               {EXAM_TYPE_OPTIONS.find(opt => opt.value === activeExamType)?.label || 'All Exams'}
+               <svg className={`w-4 h-4 transition-transform ${showExamDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+
+            {showExamDropdown && (
+               <div className="absolute top-full left-4 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in z-50">
+                  <div className="py-1">
+                     {EXAM_TYPE_OPTIONS.map(opt => (
+                        <button 
+                           key={opt.value}
+                           onClick={() => {
+                              setActiveExamType(opt.value);
+                              setShowExamDropdown(false);
+                           }}
+                           className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${activeExamType === opt.value ? 'text-blue-600 dark:text-blue-400 font-bold bg-blue-50/50 dark:bg-blue-900/10' : 'text-slate-600 dark:text-slate-300 font-medium'}`}
+                        >
+                           {opt.label}
+                           {activeExamType === opt.value && <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>}
+                        </button>
+                     ))}
+                  </div>
+               </div>
+            )}
         </div>
       </div>
 

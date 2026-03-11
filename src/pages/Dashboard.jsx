@@ -3,9 +3,11 @@ import { adminService } from '../api/adminService';
 import { analyticsService } from '../api/analyticsService';
 import StatCard from '../components/StatCard';
 import { useToast } from '../context/ToastContext';
+import { useGlobalExam } from '../context/GlobalExamContext';
 
 const Dashboard = () => {
   const { toast } = useToast();
+  const { activeExamType } = useGlobalExam();
   const [stats, setStats] = useState({
     total_users: 0,
     total_resources: 0,
@@ -28,8 +30,8 @@ const Dashboard = () => {
         adminService.getUsers().catch(err => { toast.error("Users fetch failed"); return []; }),
         adminService.materials.listStudy().catch(err => { toast.error("Materials fetch failed"); return []; }),
         adminService.materials.listResource().catch(err => { toast.error("Resources fetch failed"); return []; }),
-        adminService.manageExams.listReal('REAL_EXAM').catch(err => { toast.error("Real Exams fetch failed"); return []; }),
-        adminService.manageExams.listReal('MOCK_EXAM').catch(err => { toast.error("Mock Exams fetch failed"); return []; }),
+        adminService.manageExams.listReal({ exam_type: 'REAL_EXAM', limit: 1000 }).catch(err => { toast.error("Real Exams fetch failed"); return []; }),
+        adminService.manageExams.listReal({ exam_type: 'MOCK_EXAM', limit: 1000 }).catch(err => { toast.error("Mock Exams fetch failed"); return []; }),
         adminService.getRecentActivity(5).catch(err => { toast.error("Activity fetch failed"); return []; }),
         adminService.getReports ? adminService.getReports({ status: 'PENDING' }).catch(err => []) : Promise.resolve([]),
         adminService.manageExams.listUpcoming().catch(err => []),
@@ -67,16 +69,28 @@ const Dashboard = () => {
         return Array.isArray(list) ? list : [];
       };
 
+      // Filter by Exam Type if not ALL
+      const filterByExamType = (list) => {
+         if (activeExamType === 'ALL') return list;
+         return list.filter(item => item.exam_type === activeExamType);
+      };
+
+      const materialListFiltered = filterByExamType(materialList);
+      const resourceListFiltered = filterByExamType(resourceList);
+      const realExamListFiltered = filterByExamType(realExamList);
+      const mockExamListFiltered = filterByExamType(mockExamList);
+      const upcomingFiltered = filterByExamType(getFullList(upcomingRes));
+
       setStats({
-        total_users: userList.length,
-        total_resources: resourceList.length,
-        total_exams: realExamList.length + mockExamList.length,
-        total_materials: materialList.length
+        total_users: userList.length, // Users might not be tied to a specific exam type
+        total_resources: resourceListFiltered.length,
+        total_exams: realExamListFiltered.length + mockExamListFiltered.length,
+        total_materials: materialListFiltered.length
       });
 
       setActivities(activityList);
       setReports(getFullList(reportsRes));
-      setUpcomingExams(getFullList(upcomingRes).slice(0, 3));
+      setUpcomingExams(upcomingFiltered.slice(0, 3));
       
       if (analyticsRes) {
         const aData = analyticsRes.data || analyticsRes;
@@ -101,7 +115,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [activeExamType]);
 
   const getStatusColor = (type) => {
     const t = String(type).toLowerCase();

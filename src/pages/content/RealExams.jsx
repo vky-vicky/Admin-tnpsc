@@ -47,7 +47,7 @@ const RealExams = () => {
   const fetchExams = async () => {
     setLoading(true);
     try {
-      const data = await adminService.manageExams.listReal();
+      const data = await adminService.manageExams.listReal({ limit: 1000 });
       setExams(Array.isArray(data) ? data : (data.data || data.exams || []));
     } catch (err) {
       console.error("Error fetching exams:", err);

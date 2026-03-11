@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../api/adminService';
 import { useToast } from '../../context/ToastContext';
+import { useGlobalExam } from '../../context/GlobalExamContext';
 
 import Pagination from '../../components/Pagination';
 import ConfirmModal from '../../components/ConfirmModal';
 
 const ResourceMaterials = () => {
   const { toast } = useToast();
+  const { activeExamType } = useGlobalExam();
+  
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [view, setView] = useState('list'); // 'list', 'create'
   
   // Pagination
@@ -18,7 +22,7 @@ const ResourceMaterials = () => {
   const [formData, setFormData] = useState({
     title: '',
     category: '',
-    exam_type: 'TNPSC', // Manual override
+    exam_type: activeExamType === 'ALL' ? 'TNPSC' : activeExamType,
     uploaded_by: 1,
     file: null
   });
@@ -35,9 +39,13 @@ const ResourceMaterials = () => {
     fetchMaterials();
   }, []);
 
+  const filteredMaterials = Array.isArray(materials) ? materials.filter(m => 
+    activeExamType === 'ALL' || m.exam_type === activeExamType
+  ) : [];
+
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentMaterials = materials.slice(indexOfFirstItem, indexOfLastItem);
+  const currentMaterials = filteredMaterials.slice(indexOfFirstItem, indexOfLastItem);
 
   const fetchMaterials = async () => {
     setLoading(true);
@@ -53,6 +61,7 @@ const ResourceMaterials = () => {
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    setUploading(true);
     const data = new FormData();
     data.append('title', formData.title);
     data.append('category', formData.category);
@@ -63,11 +72,13 @@ const ResourceMaterials = () => {
     try {
       await adminService.materials.createResource(data);
       toast.success('Resource Uploaded', 'The material is now available for download in the general category.');
-      setFormData({ title: '', category: '', exam_type: 'TNPSC', uploaded_by: 1, file: null });
+      setFormData({ title: '', category: '', exam_type: activeExamType === 'ALL' ? 'TNPSC' : activeExamType, uploaded_by: 1, file: null });
       setView('list');
       fetchMaterials();
     } catch (err) {
       toast.error('Upload Failed', 'There was an issue processing your resource file.');
+    } finally {
+      setUploading(false);
     }
   };
   
@@ -155,7 +166,19 @@ const ResourceMaterials = () => {
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">File Attachment</label>
               <input type="file" required className="w-full p-3 bg-slate-900 text-white border border-slate-700 rounded-lg cursor-pointer" onChange={(e) => setFormData({...formData, file: e.target.files[0]})} />
             </div>
-            <button type="submit" className="w-full py-3 bg-orange-600 text-white font-bold rounded-lg shadow-lg hover:bg-orange-500 transition-all">Upload Resource</button>
+            <button 
+              type="submit" 
+              disabled={uploading}
+              className="w-full py-3 bg-orange-600 text-white font-bold rounded-lg shadow-lg hover:bg-orange-500 transition-all cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+            >
+              {uploading && (
+                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              )}
+              {uploading ? 'Uploading...' : 'Upload Resource'}
+            </button>
           </form>
         </div>
       ) : (

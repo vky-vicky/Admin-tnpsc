@@ -22,6 +22,12 @@ const QuestionReports = () => {
         }
     });
     const [editLoading, setEditLoading] = useState(false);
+    const [actionModal, setActionModal] = useState({
+        isOpen: false,
+        reportId: null,
+        action: null, // RESOLVE or REJECT
+        questionText: ''
+    });
 
     const fetchReports = useCallback(async () => {
         setLoading(true);

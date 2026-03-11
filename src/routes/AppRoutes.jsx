@@ -17,11 +17,13 @@ import ErrorLogs from '../pages/content/ErrorLogs';
 import QuestionReports from '../pages/content/QuestionReports';
 import DashboardLayout from '../layouts/DashboardLayout';
 import ProtectedRoute from '../components/ProtectedRoute';
+import { GlobalExamProvider } from '../context/GlobalExamContext';
 
 const AppRoutes = () => {
   return (
-    <Routes>
-      <Route path="/" element={<Login />} />
+    <GlobalExamProvider>
+      <Routes>
+        <Route path="/" element={<Login />} />
       
       {/* Protected/Dashboard Routes */}
       <Route element={<ProtectedRoute />}>
@@ -31,7 +33,7 @@ const AppRoutes = () => {
         <Route path="users" element={<UsersList />} />
         <Route path="study-materials" element={<StudyMaterials />} />
         <Route path="resource-materials" element={<ResourceMaterials />} />
-        <Route path="exams" element={<Exams />} />
+        <Route path="exams/:examType" element={<Exams />} />
         <Route path="exams-review" element={<ExamsReview />} />
         <Route path="leaderboard" element={<Leaderboard />} />
         <Route path="subscriptions" element={<Subscriptions />} />
@@ -50,6 +52,7 @@ const AppRoutes = () => {
         </div>
       } />
     </Routes>
+    </GlobalExamProvider>
   );
 };
 

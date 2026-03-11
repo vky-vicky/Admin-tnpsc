@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { adminService } from '../../api/adminService';
 import Pagination from '../../components/Pagination';
 import BaseModal from '../../components/Modal';
@@ -130,12 +130,21 @@ const InstructionModal = ({ exam, onClose }) => {
     );
 };
 
+const EXAM_TYPE_LABELS = {
+  TNPSC: 'TNPSC General',
+  TNPSC_GROUP_1: 'Group 1',
+  TNPSC_GROUP_2: 'Group 2',
+  TNPSC_GROUP_4: 'Group 4',
+  TET: 'TET',
+  POLICE: 'Police Exam',
+  REAL_EXAM: 'Real Exam',
+  MOCK_EXAM: 'Mock Exam',
+};
+
 const Exams = () => {
   const { toast } = useToast();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initialType = (searchParams.get('type') || 'REAL_EXAM').toUpperCase().includes('REAL') ? 'REAL_EXAM' : 'MOCK_EXAM';
+  const { examType = 'TNPSC' } = useParams();
   
-  const [examType, setExamType] = useState(initialType);
   const [exams, setExams] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -166,6 +175,7 @@ const Exams = () => {
     materials: [{ material_id: '', num_questions: 1 }]
   });
   const [creationMode, setCreationMode] = useState('auto'); // 'auto' or 'manual'
+  const [createLoading, setCreateLoading] = useState(false);
 
   // Question Management State
   const [managementExam, setManagementExam] = useState(null);
@@ -185,7 +195,6 @@ const Exams = () => {
   });
 
   useEffect(() => {
-    setSearchParams({ type: examType.toLowerCase() });
     fetchExams();
     fetchMaterials();
   }, [examType]);
@@ -194,7 +203,7 @@ const Exams = () => {
     setLoading(true);
     try {
       // Use the exact string MOCK_EXAM or REAL_EXAM
-      const data = await adminService.manageExams.listReal(examType);
+      const data = await adminService.manageExams.listReal({ exam_type: examType, limit: 1000 });
       
       // The user snippet shows data is inside a 'data' property
       const examsList = Array.isArray(data) ? data : (data.data || data.exams || []);
@@ -222,10 +231,12 @@ const Exams = () => {
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    setCreateLoading(true);
     try {
       const validMaterials = formData.materials.filter(m => m.material_id !== '');
       if (validMaterials.length === 0) {
         toast.error('Material Required', 'Please select at least one study material source for this exam.');
+        setCreateLoading(false);
         return;
       }
 
@@ -250,6 +261,8 @@ const Exams = () => {
     } catch (err) {
       console.error("Create Exam Error:", err);
       toast.error('Configuration Error', 'There was an issue generating the exam questions. Please verify your material selection.');
+    } finally {
+      setCreateLoading(false);
     }
   };
 
@@ -538,38 +551,20 @@ const Exams = () => {
         <>
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
+          <div className="flex items-center gap-3 mb-1">
+            <span className={`px-3 py-1 rounded-lg text-[10px] font-black tracking-widest uppercase text-white bg-gradient-to-r ${accentGradients[accentColor]}`}>
+              {EXAM_TYPE_LABELS[examType] || examType}
+            </span>
+          </div>
           <h1 className="text-4xl font-black text-slate-800 dark:text-white tracking-tight">
             Exams <span className="text-gradient">Management</span>
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">
-            Curate and deploy {examType.toLowerCase().replace('_', ' ')}s with enterprise control.
+            Curate and deploy <span className="font-bold text-slate-700 dark:text-slate-300">{EXAM_TYPE_LABELS[examType] || examType}</span> exams with enterprise control.
           </p>
         </div>
 
         <div className="flex items-center gap-4">
-            {/* Exam Type Toggle */}
-            <div className="bg-slate-200 dark:bg-slate-900 p-1 rounded-2xl flex relative h-12 w-64 border border-slate-300 dark:border-slate-800 shadow-inner">
-                <div 
-                    className={`absolute inset-y-1 w-[calc(50%-4px)] rounded-xl transition-all duration-300 ease-out shadow-lg ${
-                        examType === 'MOCK_EXAM' 
-                        ? 'translate-x-0 bg-gradient-to-r from-cyan-500 to-blue-600' 
-                        : 'translate-x-full bg-gradient-to-r from-orange-500 to-red-600'
-                    }`}
-                />
-                <button 
-                    onClick={() => setExamType('MOCK_EXAM')}
-                    className={`flex-1 z-10 font-bold text-sm transition-colors duration-300 ${examType === 'MOCK_EXAM' ? 'text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                >
-                    MOCK EXAM
-                </button>
-                <button 
-                    onClick={() => setExamType('REAL_EXAM')}
-                    className={`flex-1 z-10 font-bold text-sm transition-colors duration-300 ${examType === 'REAL_EXAM' ? 'text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                >
-                    REAL EXAM
-                </button>
-            </div>
-
             <button 
                 onClick={() => setView(view === 'list' ? 'create' : 'list')}
                 className={`h-12 px-6 rounded-2xl font-bold flex items-center gap-2 transition-all transform active:scale-95 shadow-xl ${
@@ -581,7 +576,7 @@ const Exams = () => {
                 {view === 'list' ? (
                     <>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
-                        Create {examType.split('_')[0]}
+                        Create Exam
                     </>
                 ) : 'Back to Hub'}
             </button>
@@ -889,9 +884,16 @@ const Exams = () => {
                         </button>
                         <button 
                             type="submit" 
-                            className={`px-12 py-4 rounded-2xl font-black text-white tracking-widest uppercase shadow-2xl transition-all transform hover:-translate-y-1 active:scale-95 bg-gradient-to-r ${accentGradients[accentColor]}`}
+                            disabled={createLoading}
+                            className={`px-12 py-4 rounded-2xl font-black text-white tracking-widest uppercase shadow-2xl transition-all transform hover:-translate-y-1 active:scale-95 bg-gradient-to-r ${accentGradients[accentColor]} cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-3`}
                         >
-                            Deploy {examType}
+                            {createLoading && (
+                                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            )}
+                            {createLoading ? 'Deploying...' : `Deploy ${examType}`}
                         </button>
                     </div>
                 </form>
