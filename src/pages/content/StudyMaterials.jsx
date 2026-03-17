@@ -26,7 +26,7 @@ const StudyMaterials = () => {
   // Form State
   const [formData, setFormData] = useState({
     title: '',
-    language: 'english',
+    language: 'tamil',
     category: '',
     subject: '',
     exam_type: activeExamType === 'ALL' ? 'TNPSC' : activeExamType,
@@ -123,7 +123,7 @@ const StudyMaterials = () => {
       setView('list');
       setFormData({
         title: '',
-        language: 'english',
+        language: 'tamil',
         category: '',
         subject: '',
         exam_type: 'TNPSC',
@@ -248,10 +248,10 @@ const StudyMaterials = () => {
                 value={formData.language}
                 onChange={(e) => setFormData({...formData, language: e.target.value})}
               >
-                <option value="english">English</option>
                 <option value="tamil">Tamil</option>
               </select>
             </div>
+            
 
              <div>
               <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Broad Category</label>

@@ -151,6 +151,7 @@ const Exams = () => {
   const [view, setView] = useState('list'); // 'list' or 'create'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedExam, setSelectedExam] = useState(null); // For instruction preview
+  const [examSubCategory, setExamSubCategory] = useState('REAL_EXAM'); // 'REAL_EXAM' or 'MOCK_EXAM'
   
   // Delete Confirmation State
   const [deleteModal, setDeleteModal] = useState({
@@ -172,6 +173,7 @@ const Exams = () => {
     language: 'tamil',
     category: 'General',
     subject: '',
+    exam_type: 'REAL_EXAM',
     materials: [{ material_id: '', num_questions: 1 }]
   });
   const [creationMode, setCreationMode] = useState('auto'); // 'auto' or 'manual'
@@ -193,30 +195,44 @@ const Exams = () => {
     explanation_text: '',
     language: 'tamil'
   });
+  const [questionDeleteModal, setQuestionDeleteModal] = useState({
+    isOpen: false,
+    id: null
+  });
+  const [questionDeleteLoading, setQuestionDeleteLoading] = useState(false);
 
   useEffect(() => {
     fetchExams();
     fetchMaterials();
-  }, [examType]);
+  }, [examType, examSubCategory]);
 
   const fetchExams = async () => {
     setLoading(true);
     try {
-      // Use the exact string MOCK_EXAM or REAL_EXAM
-      const data = await adminService.manageExams.listReal({ exam_type: examType, limit: 1000 });
+      // Use exam_type_code instead of exam_type to filter by platform (TNPSC, etc)
+      const data = await adminService.manageExams.listReal({ 
+        exam_type_code: examType, 
+        exam_type: examSubCategory,
+        limit: 1000 
+      });
       
-      // The user snippet shows data is inside a 'data' property
       const examsList = Array.isArray(data) ? data : (data.data || data.exams || []);
       
-      // Filter the list to ensure we only show the selected type
-      const filteredResult = examsList.filter(e => e.exam_type === examType);
+      // Filter the list to ensure we only show the selected platform code
+      // We also handle cases where the backend doesn't support filtering yet
+      const filteredResult = examsList.filter(e => 
+        (e.exam_type_code === examType) || 
+        (e.exam_type === examType) // Fallback for legacy records
+      );
       
       setExams(filteredResult);
       setCurrentPage(1);
     } catch (err) {
       console.error("Error fetching exams:", err);
+      toast.error("Fetch Error", "Failed to retrieve the exam list.");
     } finally {
-      setTimeout(() => setLoading(false), 600);
+      // Remove artificial delay or keep it short
+      setLoading(false);
     }
   };
 
@@ -243,7 +259,8 @@ const Exams = () => {
       const payload = {
         ...formData,
         duration_minutes: parseInt(formData.duration_minutes) || 180,
-        exam_type: examType,
+        exam_type: formData.exam_type || 'REAL_EXAM', // User selected category
+        exam_type_code: examType, // Keep platform specifics here
         materials: creationMode === 'auto' ? validMaterials.map(m => ({
           material_id: parseInt(m.material_id),
           num_questions: parseInt(m.num_questions)
@@ -256,6 +273,7 @@ const Exams = () => {
         await adminService.manageExams.createExam(payload);
       }
       toast.success(`${examType.replace('_', ' ')} Created`, 'The exam has been successfully configured and listed.');
+      setExamSubCategory(payload.exam_type); // Switch to the relevant tab
       setView('list');
       fetchExams();
     } catch (err) {
@@ -318,14 +336,25 @@ const Exams = () => {
     }
   };
 
-  const handleDeleteQuestion = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this question?')) return;
+  const handleDeleteQuestion = (id) => {
+    setQuestionDeleteModal({
+      isOpen: true,
+      id
+    });
+  };
+
+  const handleConfirmDeleteQuestion = async () => {
+    const { id } = questionDeleteModal;
+    setQuestionDeleteLoading(true);
     try {
       await adminService.manageExams.deleteQuestion(id);
       setQuestions(questions.filter(q => q.id !== id));
       toast.success('Question Deleted', 'Item removed from the exam.');
+      setQuestionDeleteModal({ isOpen: false, id: null });
     } catch (err) {
       toast.error('Delete Failed', 'Could not remove the question.');
+    } finally {
+      setQuestionDeleteLoading(false);
     }
   };
 
@@ -361,7 +390,7 @@ const Exams = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentExams = filteredExams.slice(indexOfFirstItem, indexOfLastItem);
 
-  const accentColor = examType === 'MOCK_EXAM' ? 'cyan' : 'orange';
+  const accentColor = examSubCategory === 'MOCK_EXAM' ? 'cyan' : 'orange';
   const accentGradients = {
     cyan: 'from-cyan-500 to-blue-600 shadow-cyan-500/20',
     orange: 'from-orange-500 to-red-600 shadow-orange-500/20'
@@ -370,13 +399,36 @@ const Exams = () => {
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-8 animate-fade-in min-h-screen">
       
-      {/* Modal Overlay for Instructions */}
+      {/* Modal Overlays */}
       {selectedExam && (
           <InstructionModal 
             exam={selectedExam} 
             onClose={() => setSelectedExam(null)} 
           />
       )}
+
+      {/* Exam Delete Confirm */}
+      <ConfirmModal 
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}
+        onConfirm={handleConfirmDelete}
+        loading={deleteLoading}
+        title="Delete Exam?"
+        message={`Are you sure you want to delete "${deleteModal.title}"? This action will remove all questions and results associated with this exam.`}
+        confirmText="Yes, Delete Exam"
+      />
+
+      {/* Question Delete Confirm */}
+      <ConfirmModal 
+        isOpen={questionDeleteModal.isOpen}
+        onClose={() => setQuestionDeleteModal({ ...questionDeleteModal, isOpen: false })}
+        onConfirm={handleConfirmDeleteQuestion}
+        loading={questionDeleteLoading}
+        title="Delete Question?"
+        message="Are you sure you want to remove this question? This action will permanently delete it from the exam pool."
+        confirmText="Delete Question"
+        cancelText="Keep Question"
+      />
 
       {/* Premium Header & Toggle */}
       {managementExam ? (
@@ -584,7 +636,33 @@ const Exams = () => {
       </div>
 
       {view === 'list' && (
-        <div className="space-y-6">
+        <div className="space-y-8 animate-slide-up">
+            {/* Real/Mock Toggle Tabs */}
+            <div className="flex p-1.5 bg-slate-100 dark:bg-slate-900/50 rounded-2xl w-fit border border-slate-200 dark:border-slate-800 shadow-inner">
+                <button 
+                    onClick={() => setExamSubCategory('REAL_EXAM')}
+                    className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
+                        examSubCategory === 'REAL_EXAM' 
+                        ? 'bg-white dark:bg-slate-800 shadow-lg text-orange-600 dark:text-orange-400' 
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                >
+                    <div className={`w-2 h-2 rounded-full ${examSubCategory === 'REAL_EXAM' ? 'bg-orange-500 animate-pulse' : 'bg-slate-300'}`}></div>
+                    Real Exams
+                </button>
+                <button 
+                    onClick={() => setExamSubCategory('MOCK_EXAM')}
+                    className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
+                        examSubCategory === 'MOCK_EXAM' 
+                        ? 'bg-white dark:bg-slate-800 shadow-lg text-cyan-600 dark:text-cyan-400' 
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                >
+                    <div className={`w-2 h-2 rounded-full ${examSubCategory === 'MOCK_EXAM' ? 'bg-cyan-500 animate-pulse' : 'bg-slate-300'}`}></div>
+                    Mock Exams
+                </button>
+            </div>
+
             {/* Search and Filters */}
             <div className="flex flex-col md:flex-row gap-4 items-center animate-slide-up">
                 <div className="relative flex-1 group">
@@ -608,8 +686,8 @@ const Exams = () => {
                         <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
                             <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 9.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         </div>
-                        <h3 className="text-xl font-bold text-slate-800 dark:text-white">No {examType.toLowerCase()}s found</h3>
-                        <p className="text-slate-500 max-w-xs mx-auto">Try adjusting your search or create a new exam for this category.</p>
+                        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">No {examType.toLowerCase().replace('_', ' ')}s found</h3>
+                        <p className="text-slate-500 max-w-xs mx-auto mb-6">Try adjusting your search or create a new exam for this category.</p>
                         <button onClick={() => setView('create')} className="px-6 py-2 bg-blue-600 text-white font-bold rounded-xl shadow-lg">Start Creating</button>
                     </div>
                 ) : (
@@ -622,7 +700,7 @@ const Exams = () => {
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex flex-col items-start gap-1">
                                     <span className={`px-3 py-1 rounded-lg text-[10px] font-black tracking-widest uppercase text-white bg-gradient-to-r ${accentGradients[accentColor]}`}>
-                                        {examType}
+                                        {examSubCategory.replace('_', ' ')} • {examType}
                                     </span>
                                     <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">ID: #{exam.id}</span>
                                 </div>
@@ -748,12 +826,14 @@ const Exams = () => {
 
                         <div>
                             <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-tight">Exam Category</label>
-                            <input 
-                                type="text" required
-                                className="w-full p-4 bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                                value={formData.category}
-                                onChange={(e) => setFormData({...formData, category: e.target.value})}
-                            />
+                            <select 
+                                className="w-full p-4 bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 shadow-sm appearance-none"
+                                value={formData.exam_type}
+                                onChange={(e) => setFormData({...formData, exam_type: e.target.value})}
+                            >
+                                <option value="REAL_EXAM">Real Exam (Scheduled)</option>
+                                <option value="MOCK_EXAM">Mock Exam (Practice)</option>
+                            </select>
                         </div>
 
                         <div>

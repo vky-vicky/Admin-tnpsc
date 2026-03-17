@@ -27,6 +27,12 @@ const ExamsReview = () => {
      explanation_text: '',
      language: 'tamil'
    });
+   
+   const [questionDeleteModal, setQuestionDeleteModal] = useState({
+     isOpen: false,
+     id: null
+   });
+   const [questionDeleteLoading, setQuestionDeleteLoading] = useState(false);
 
   useEffect(() => {
     fetchExams();
@@ -89,16 +95,27 @@ const ExamsReview = () => {
     }
   };
 
-  const handleDeleteQuestion = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this question?')) return;
-    try {
-      await adminService.manageExams.deleteQuestion(id);
-      setQuestions(questions.filter(q => q.id !== id));
-      toast.success('Question Deleted', 'Item removed from the exam.');
-    } catch (err) {
-      toast.error('Delete Failed', 'Could not remove the question.');
-    }
-  };
+   const handleDeleteQuestion = (id) => {
+     setQuestionDeleteModal({
+       isOpen: true,
+       id
+     });
+   };
+
+   const handleConfirmDeleteQuestion = async () => {
+     const { id } = questionDeleteModal;
+     setQuestionDeleteLoading(true);
+     try {
+       await adminService.manageExams.deleteQuestion(id);
+       setQuestions(questions.filter(q => q.id !== id));
+       toast.success('Question Deleted', 'Item removed from the exam pool.');
+       setQuestionDeleteModal({ isOpen: false, id: null });
+     } catch (err) {
+       toast.error('Delete Failed', 'Could not remove the question.');
+     } finally {
+       setQuestionDeleteLoading(false);
+     }
+   };
 
   const handleAddQuestion = async (e) => {
     e.preventDefault();
@@ -424,6 +441,17 @@ const ExamsReview = () => {
             </table>
          </div>
       </div>
+
+      <ConfirmModal 
+        isOpen={questionDeleteModal.isOpen}
+        onClose={() => setQuestionDeleteModal({ ...questionDeleteModal, isOpen: false })}
+        onConfirm={handleConfirmDeleteQuestion}
+        loading={questionDeleteLoading}
+        title="Delete Question?"
+        message="Are you sure you want to remove this question? This action will permanently delete it from the exam."
+        confirmText="Delete Question"
+        cancelText="Keep Question"
+      />
     </div>
   );
 };

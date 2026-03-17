@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../api/adminService';
+import { useToast } from '../context/ToastContext';
 
 const Settings = () => {
+  const { toast } = useToast();
   const [profile, setProfile] = useState({
     name: 'Administrator',
     email: 'admin@ondrutechnologies.com',
@@ -40,14 +42,16 @@ const Settings = () => {
     // In a real app, you'd call an API here
     // await adminService.updateProfile(profile);
     
-    alert('Profile updated successfully!');
-    // Force reload to update TopNavbar (simple way) or use Context
-    window.location.reload(); 
+    toast.success('Profile Updated', 'Your changes have been saved successfully.');
+    // Force reload to update TopNavbar after toast has a chance to be seen
+    setTimeout(() => {
+        window.location.reload();
+    }, 1500);
   };
 
   const handlePasswordChange = (e) => {
     e.preventDefault();
-    alert('Password change functionality coming soon');
+    toast.info('Coming Soon', 'Password change functionality will be available in the next release.');
     setPasswordForm({ current: '', new: '', confirm: '' });
   };
 

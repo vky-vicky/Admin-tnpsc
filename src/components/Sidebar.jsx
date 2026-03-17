@@ -2,12 +2,8 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 
 const EXAM_TYPES = [
-  { label: 'TNPSC General', slug: 'TNPSC' },
-  { label: 'Group 1', slug: 'TNPSC_GROUP_1' },
   { label: 'Group 2', slug: 'TNPSC_GROUP_2' },
   { label: 'Group 4', slug: 'TNPSC_GROUP_4' },
-  { label: 'TET', slug: 'TET' },
-  { label: 'Police Exam', slug: 'POLICE' },
 ];
 
 const NavIcon = ({ d }) => (
