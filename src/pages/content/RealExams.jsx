@@ -304,8 +304,14 @@ const RealExams = () => {
               ))}
             </div>
 
-            <div className="flex justify-end pt-4">
-              <button type="submit" className="px-10 py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl shadow-lg shadow-green-500/20">
+            <div className="flex flex-col sm:flex-row justify-between items-center bg-slate-100 dark:bg-slate-700/50 p-4 rounded-xl mt-6 border border-slate-200 dark:border-slate-700">
+              <div className="mb-4 sm:mb-0">
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Questions Count</p>
+                <p className="text-2xl font-bold text-slate-800 dark:text-white">
+                  {formData.materials.reduce((sum, m) => sum + (parseInt(m.num_questions) || 0), 0)}
+                </p>
+              </div>
+              <button type="submit" className="w-full sm:w-auto px-10 py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl shadow-lg shadow-green-500/20 transition-all">
                 Publish Real Exam
               </button>
             </div>

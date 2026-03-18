@@ -3,18 +3,18 @@ import { adminService } from '../api/adminService';
 import { useNavigate } from 'react-router-dom';
 import { useGlobalExam } from '../context/GlobalExamContext';
 
-const EXAM_TYPE_OPTIONS = [
-  { value: 'ALL', label: 'All Exams' },
-  { value: 'TNPSC', label: 'TNPSC General' },
-  { value: 'TNPSC_GROUP_1', label: 'Group 1' },
-  { value: 'TNPSC_GROUP_2', label: 'Group 2' },
-  { value: 'TNPSC_GROUP_4', label: 'Group 4' },
-  { value: 'TET', label: 'TET' },
-  { value: 'POLICE', label: 'Police Exam' }
+const EXAM_TYPE_OPTIONS_DEFAULT = [
+  { value: 'ALL', label: 'All Exams' }
 ];
 
 const TopNavbar = ({ onToggleSidebar, onToggleTheme, isDark }) => {
-  const { activeExamType, setActiveExamType } = useGlobalExam();
+  const { activeExamType, setActiveExamType, allExamTypes, isLoading: isExamTypesLoading } = useGlobalExam();
+  
+  // Combine 'All Exams' with dynamic types
+  const examOptions = [
+    ...EXAM_TYPE_OPTIONS_DEFAULT,
+    ...allExamTypes.map(t => ({ value: t.slug, label: t.name }))
+  ];
   const [showExamDropdown, setShowExamDropdown] = useState(false);
   const examDropdownRef = useRef(null);
 
@@ -174,16 +174,17 @@ const TopNavbar = ({ onToggleSidebar, onToggleTheme, isDark }) => {
             <span className="text-xs font-semibold text-slate-400 mr-2 uppercase tracking-wide">Viewing Data For:</span>
             <button 
                onClick={() => setShowExamDropdown(!showExamDropdown)}
-               className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-sm font-bold"
+               className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-sm font-bold disabled:opacity-50"
+               disabled={isExamTypesLoading}
             >
-               {EXAM_TYPE_OPTIONS.find(opt => opt.value === activeExamType)?.label || 'All Exams'}
+               {isExamTypesLoading ? 'Loading...' : (examOptions.find(opt => opt.value === activeExamType)?.label || 'All Exams')}
                <svg className={`w-4 h-4 transition-transform ${showExamDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
             </button>
 
             {showExamDropdown && (
                <div className="absolute top-full left-4 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in z-50">
                   <div className="py-1">
-                     {EXAM_TYPE_OPTIONS.map(opt => (
+                     {examOptions.map(opt => (
                         <button 
                            key={opt.value}
                            onClick={() => {

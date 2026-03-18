@@ -1,10 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-
-const EXAM_TYPES = [
-  { label: 'Group 2', slug: 'TNPSC_GROUP_2' },
-  { label: 'Group 4', slug: 'TNPSC_GROUP_4' },
-];
+import { useGlobalExam } from '../context/GlobalExamContext';
 
 const NavIcon = ({ d }) => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -15,6 +11,7 @@ const NavIcon = ({ d }) => (
 const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { allExamTypes, isLoading: isExamTypesLoading } = useGlobalExam();
   const [examsOpen, setExamsOpen] = useState(location.pathname.includes('/dashboard/exams'));
 
   const isExamActive = (slug) => location.pathname === `/dashboard/exams/${slug}`;
@@ -160,24 +157,30 @@ const Sidebar = ({ isOpen, onClose }) => {
             {/* Sub-items */}
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${examsOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
               <div className="ml-4 mt-1 pl-4 border-l-2 border-slate-200 dark:border-slate-700 space-y-1 py-1">
-                {EXAM_TYPES.map((et) => {
-                  const active = isExamActive(et.slug);
-                  return (
-                    <NavLink
-                      key={et.slug}
-                      to={`/dashboard/exams/${et.slug}`}
-                      onClick={() => window.innerWidth < 768 && onClose()}
-                      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
-                        active
-                          ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-white'
-                      }`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${active ? 'bg-white' : 'bg-slate-300 dark:bg-slate-600'}`}></span>
-                      {et.label}
-                    </NavLink>
-                  );
-                })}
+                {isExamTypesLoading ? (
+                  <div className="px-3 py-2 text-xs text-slate-400 italic">Loading categories...</div>
+                ) : allExamTypes.length > 0 ? (
+                  allExamTypes.map((et) => {
+                    const active = isExamActive(et.slug);
+                    return (
+                      <NavLink
+                        key={et.slug}
+                        to={`/dashboard/exams/${et.slug}`}
+                        onClick={() => window.innerWidth < 768 && onClose()}
+                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                          active
+                            ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
+                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-white'
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${active ? 'bg-white' : 'bg-slate-300 dark:bg-slate-600'}`}></span>
+                        {et.name}
+                      </NavLink>
+                    );
+                  })
+                ) : (
+                  <div className="px-3 py-2 text-xs text-slate-400 italic">No categories found</div>
+                )}
               </div>
             </div>
           </div>

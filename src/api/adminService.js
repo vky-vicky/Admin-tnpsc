@@ -4,6 +4,7 @@ export const adminService = {
   // Authentication
   login: (email, password) => api.post("/admin/login", { email, password }),
   register: (userData) => api.post("/admin/register", userData),
+  getExamTypes: () => api.get("/auth/exam-types"),
 
   // User Management
   getUsers: (params = {}) => api.get("/admin/users/", { params }),
@@ -56,6 +57,7 @@ export const adminService = {
 
     // Question Management
     addQuestion: (examId, data) => api.post(`/admin/exams/${examId}/questions`, data),
+    addQuestionsFromMaterial: (examId, data) => api.post(`/admin/exams/${examId}/questions-from-material`, data),
     getQuestionDetail: (id) => api.get(`/admin/questions/${id}`),
     updateQuestion: (id, data) => api.post(`/admin/question-update/${id}`, data),
     deleteQuestion: (id) => api.delete(`/admin/questions/${id}`),

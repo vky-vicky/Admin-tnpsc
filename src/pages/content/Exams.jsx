@@ -5,6 +5,7 @@ import Pagination from '../../components/Pagination';
 import BaseModal from '../../components/Modal';
 import { useToast } from '../../context/ToastContext';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useGlobalExam } from '../../context/GlobalExamContext';
 
 const SkeletonCard = () => (
   <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 relative overflow-hidden shadow-sm">
@@ -144,6 +145,10 @@ const EXAM_TYPE_LABELS = {
 const Exams = () => {
   const { toast } = useToast();
   const { examType = 'TNPSC' } = useParams();
+  const { allExamTypes } = useGlobalExam();
+  
+  // Find dynamic label if available
+  const platformLabel = allExamTypes.find(t => t.slug === examType)?.name || EXAM_TYPE_LABELS[examType] || examType;
   
   const [exams, setExams] = useState([]);
   const [materials, setMaterials] = useState([]);
@@ -201,6 +206,11 @@ const Exams = () => {
   });
   const [questionDeleteLoading, setQuestionDeleteLoading] = useState(false);
 
+  // Add-Question mode: 'manual' | 'from_material'
+  const [addMode, setAddMode] = useState('manual');
+  const [fromMaterial, setFromMaterial] = useState({ material_id: '', num_questions: 3 });
+  const [addFromMatLoading, setAddFromMatLoading] = useState(false);
+
   useEffect(() => {
     fetchExams();
     fetchMaterials();
@@ -221,8 +231,8 @@ const Exams = () => {
       // Filter the list to ensure we only show the selected platform code
       // We also handle cases where the backend doesn't support filtering yet
       const filteredResult = examsList.filter(e => 
-        (e.exam_type_code === examType) || 
-        (e.exam_type === examType) // Fallback for legacy records
+        (e.exam_type_code?.toUpperCase() === examType?.toUpperCase()) || 
+        (e.exam_type?.toUpperCase() === examType?.toUpperCase()) // Fallback for legacy records
       );
       
       setExams(filteredResult);
@@ -362,7 +372,9 @@ const Exams = () => {
     e.preventDefault();
     try {
       const res = await adminService.manageExams.addQuestion(managementExam.id, newQuestion);
-      setQuestions([...questions, res.data || res]);
+      // Extract the newly created question from any common API response shape
+      const addedQuestion = res?.data?.question || res?.question || res?.data || res;
+      setQuestions(prev => [...prev, addedQuestion]);
       setIsAddingQuestion(false);
       setNewQuestion({
         question_text: '',
@@ -374,9 +386,35 @@ const Exams = () => {
         explanation_text: '',
         language: 'tamil'
       });
-      toast.success('Question Added', 'New question has been appended.');
+      toast.success('Question Added', `Question Pool updated: ${questions.length + 1} questions total.`);
     } catch (err) {
       toast.error('Add Failed', 'Could not append the new question.');
+    }
+  };
+
+  const handleAddFromMaterial = async (e) => {
+    e.preventDefault();
+    if (!fromMaterial.material_id) {
+      toast.error('Material Required', 'Please select a study material first.');
+      return;
+    }
+    setAddFromMatLoading(true);
+    try {
+      const res = await adminService.manageExams.addQuestionsFromMaterial(managementExam.id, {
+        material_id: parseInt(fromMaterial.material_id),
+        num_questions: parseInt(fromMaterial.num_questions) || 1
+      });
+      const addedList = res?.data || [];
+      setQuestions(prev => [...prev, ...addedList]);
+      setIsAddingQuestion(false);
+      setFromMaterial({ material_id: '', num_questions: 3 });
+      const newTotal = res?.new_total || (questions.length + addedList.length);
+      toast.success('Questions Added!', `${res?.added_count || addedList.length} questions added. Pool: ${newTotal} total.`);
+    } catch (err) {
+      const msg = err?.response?.data?.detail || err?.message || 'Could not add questions from material.';
+      toast.error('Add Failed', msg);
+    } finally {
+      setAddFromMatLoading(false);
     }
   };
 
@@ -453,7 +491,7 @@ const Exams = () => {
                       <div className="flex items-center justify-between">
                           <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Question Pool ({questions.length})</h3>
                           <button 
-                            onClick={() => setIsAddingQuestion(true)}
+                            onClick={() => { setIsAddingQuestion(true); setAddMode('manual'); }}
                             className="px-6 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
                           >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
@@ -461,60 +499,167 @@ const Exams = () => {
                           </button>
                       </div>
 
-                      {isAddingQuestion && (
-                          <div className="bg-blue-50/50 dark:bg-blue-900/10 border-2 border-dashed border-blue-200 dark:border-blue-800 rounded-3xl p-8 animate-scale-up">
-                              <h4 className="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-6">Add New Manual Question</h4>
-                              <form onSubmit={handleAddQuestion} className="space-y-6">
-                                  <textarea 
-                                      required rows="3"
-                                      placeholder="Type your question here..."
-                                      className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500"
-                                      value={newQuestion.question_text}
-                                      onChange={(e) => setNewQuestion({...newQuestion, question_text: e.target.value})}
-                                  />
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      {['a', 'b', 'c', 'd'].map(opt => (
-                                          <div key={opt}>
-                                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Option {opt.toUpperCase()}</label>
-                                              <input 
-                                                  required
+                      {isAddingQuestion && (() => {
+                          const selMat = materials.find(m => String(m.id) === String(fromMaterial.material_id));
+                          const availCount = selMat?.question_count ?? null;
+                          const isOver = availCount !== null && parseInt(fromMaterial.num_questions) > availCount;
+                          return (
+                          <div className="bg-slate-50 dark:bg-slate-800/60 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl p-6 animate-scale-up">
+                              {/* Tab toggle */}
+                              <div className="flex items-center gap-2 mb-6">
+                                  <div className="flex bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                                      <button
+                                          type="button"
+                                          onClick={() => setAddMode('manual')}
+                                          className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${addMode === 'manual' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                      >
+                                          ✏️ Manual
+                                      </button>
+                                      <button
+                                          type="button"
+                                          onClick={() => setAddMode('from_material')}
+                                          className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${addMode === 'from_material' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                      >
+                                          📚 From Material
+                                      </button>
+                                  </div>
+                                  <button type="button" onClick={() => setIsAddingQuestion(false)} className="ml-auto text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                  </button>
+                              </div>
+
+                              {addMode === 'manual' ? (
+                                  /* ── MANUAL TAB ── */
+                                  <form onSubmit={handleAddQuestion} className="space-y-5">
+                                      <textarea
+                                          required rows="3"
+                                          placeholder="Type your question here..."
+                                          className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500"
+                                          value={newQuestion.question_text}
+                                          onChange={(e) => setNewQuestion({...newQuestion, question_text: e.target.value})}
+                                      />
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                          {['a', 'b', 'c', 'd'].map(opt => (
+                                              <div key={opt}>
+                                                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Option {opt.toUpperCase()}</label>
+                                                  <input
+                                                      required
+                                                      className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500"
+                                                      value={newQuestion[`option_${opt}`]}
+                                                      onChange={(e) => setNewQuestion({...newQuestion, [`option_${opt}`]: e.target.value})}
+                                                  />
+                                              </div>
+                                          ))}
+                                      </div>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                          <div>
+                                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Correct Answer</label>
+                                              <select
+                                                  className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                                                  value={newQuestion.correct_answer}
+                                                  onChange={(e) => setNewQuestion({...newQuestion, correct_answer: e.target.value})}
+                                              >
+                                                  <option value="A">Option A</option>
+                                                  <option value="B">Option B</option>
+                                                  <option value="C">Option C</option>
+                                                  <option value="D">Option D</option>
+                                              </select>
+                                          </div>
+                                          <div>
+                                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Explanation (Optional)</label>
+                                              <input
                                                   className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500"
-                                                  value={newQuestion[`option_${opt}`]}
-                                                  onChange={(e) => setNewQuestion({...newQuestion, [`option_${opt}`]: e.target.value})}
+                                                  value={newQuestion.explanation_text}
+                                                  onChange={(e) => setNewQuestion({...newQuestion, explanation_text: e.target.value})}
                                               />
                                           </div>
-                                      ))}
-                                  </div>
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                       <div>
-                                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Correct Answer</label>
-                                           <select 
-                                               className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-                                               value={newQuestion.correct_answer}
-                                               onChange={(e) => setNewQuestion({...newQuestion, correct_answer: e.target.value})}
-                                           >
-                                               <option value="A">Option A</option>
-                                               <option value="B">Option B</option>
-                                               <option value="C">Option C</option>
-                                               <option value="D">Option D</option>
-                                           </select>
-                                       </div>
-                                       <div>
-                                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Explanation (Optional)</label>
-                                           <input 
-                                               className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500"
-                                               value={newQuestion.explanation_text}
-                                               onChange={(e) => setNewQuestion({...newQuestion, explanation_text: e.target.value})}
-                                           />
-                                       </div>
-                                  </div>
-                                  <div className="flex justify-end gap-3 pt-4 border-t border-blue-100 dark:border-blue-900/30">
-                                      <button type="button" onClick={() => setIsAddingQuestion(false)} className="px-6 py-2 text-slate-500 font-bold uppercase text-[10px] tracking-widest">Cancel</button>
-                                      <button type="submit" className="px-10 py-3 bg-blue-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest shadow-xl shadow-blue-500/20">Add Question</button>
-                                  </div>
-                              </form>
+                                      </div>
+                                      <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
+                                          <button type="submit" className="px-10 py-3 bg-blue-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest shadow-xl shadow-blue-500/20">Add Question</button>
+                                      </div>
+                                  </form>
+                              ) : (
+                                  /* ── FROM MATERIAL TAB ── */
+                                  <form onSubmit={handleAddFromMaterial} className="space-y-5">
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                          Select a study material from <span className="font-black text-slate-700 dark:text-slate-300">{examType}</span> and choose how many questions to pull into this exam.
+                                      </p>
+
+                                      {/* Material dropdown */}
+                                      <div>
+                                          <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Study Material</label>
+                                          <select
+                                              required
+                                              className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 appearance-none"
+                                              value={fromMaterial.material_id}
+                                              onChange={(e) => setFromMaterial(prev => ({ ...prev, material_id: e.target.value }))}
+                                          >
+                                              <option value="">Select a material...</option>
+                                              {materials
+                                                  .filter(m => m.exam_type?.toUpperCase() === examType?.toUpperCase())
+                                                  .map(m => {
+                                                      const cnt = m.question_count ?? null;
+                                                      return (
+                                                          <option key={m.id} value={m.id}>
+                                                              {m.title}{cnt !== null ? ` — ${cnt} Questions` : ''}
+                                                          </option>
+                                                      );
+                                                  })}
+                                          </select>
+                                          {/* Badge */}
+                                          {selMat && (
+                                              <div className={`mt-2 ml-1 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${isOver ? 'bg-red-100 dark:bg-red-900/20 text-red-600' : 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'}`}>
+                                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
+                                                  {availCount !== null
+                                                      ? isOver
+                                                          ? `⚠ Only ${availCount} available — reduce count`
+                                                          : `${availCount} questions available · taking ${parseInt(fromMaterial.num_questions) || 0}`
+                                                      : selMat.title
+                                                  }
+                                              </div>
+                                          )}
+                                      </div>
+
+                                      {/* Number of questions */}
+                                      <div className="flex items-end gap-4">
+                                          <div className="flex-1">
+                                              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">
+                                                  {availCount !== null ? `How Many to Add (max ${availCount})` : 'How Many to Add'}
+                                              </label>
+                                              <input
+                                                  type="number" required min={1}
+                                                  max={availCount ?? undefined}
+                                                  className={`w-full p-4 bg-white dark:bg-slate-900 border rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 text-2xl font-black transition-colors ${isOver ? 'border-red-400' : 'border-slate-200 dark:border-slate-800'}`}
+                                                  value={fromMaterial.num_questions}
+                                                  onChange={(e) => setFromMaterial(prev => ({ ...prev, num_questions: e.target.value }))}
+                                              />
+                                          </div>
+                                          {/* Quick pick buttons */}
+                                          <div className="flex flex-col gap-1.5 pb-1">
+                                              {[3, 5, 10, 25, 50].map(n => (
+                                                  <button key={n} type="button"
+                                                      onClick={() => setFromMaterial(prev => ({ ...prev, num_questions: n }))}
+                                                      className={`px-3 py-1 rounded-lg text-[10px] font-black border transition-all ${parseInt(fromMaterial.num_questions) === n ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-emerald-500 hover:text-emerald-500'}`}
+                                                  >+{n}</button>
+                                              ))}
+                                          </div>
+                                      </div>
+
+                                      <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
+                                          <button
+                                              type="submit"
+                                              disabled={addFromMatLoading || isOver}
+                                              className="px-10 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-black rounded-xl text-[10px] uppercase tracking-widest shadow-xl shadow-emerald-500/20 flex items-center gap-2 transition-all"
+                                          >
+                                              {addFromMatLoading && <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>}
+                                              {addFromMatLoading ? 'Adding...' : `Add ${fromMaterial.num_questions || ''} Questions`}
+                                          </button>
+                                      </div>
+                                  </form>
+                              )}
                           </div>
-                      )}
+                          );
+                      })()}
 
                       <div className="space-y-4">
                           {questions.map((q, idx) => (
@@ -605,14 +750,14 @@ const Exams = () => {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <span className={`px-3 py-1 rounded-lg text-[10px] font-black tracking-widest uppercase text-white bg-gradient-to-r ${accentGradients[accentColor]}`}>
-              {EXAM_TYPE_LABELS[examType] || examType}
+              {platformLabel}
             </span>
           </div>
           <h1 className="text-4xl font-black text-slate-800 dark:text-white tracking-tight">
             Exams <span className="text-gradient">Management</span>
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">
-            Curate and deploy <span className="font-bold text-slate-700 dark:text-slate-300">{EXAM_TYPE_LABELS[examType] || examType}</span> exams with enterprise control.
+            Curate and deploy <span className="font-bold text-slate-700 dark:text-slate-300">{platformLabel}</span> exams with enterprise control.
           </p>
         </div>
 
@@ -774,7 +919,7 @@ const Exams = () => {
         <div className="animate-slide-up max-w-4xl mx-auto pb-12">
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden">
                 <div className={`p-8 bg-gradient-to-r ${accentGradients[accentColor]}`}>
-                    <h2 className="text-2xl font-black text-white">Create New {examType}</h2>
+                    <h2 className="text-2xl font-black text-white">Create New {platformLabel}</h2>
                     <p className="text-white/80 text-sm font-medium">Configure your exam set and source materials.</p>
                 </div>
                 
@@ -893,53 +1038,96 @@ const Exams = () => {
                                         </button>
                                     </div>
                                 <div className="space-y-4">
-                                    {formData.materials.map((m, idx) => (
-                                        <div key={idx} className="flex gap-4 items-end animate-fade-in">
-                                            <div className="flex-1">
-                                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Select Source Study Material</label>
-                                                <select 
-                                                    required={creationMode === 'auto'}
-                                                    className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 appearance-none shadow-sm"
-                                                    value={m.material_id}
-                                                    onChange={(e) => {
-                                                        const updated = [...formData.materials];
-                                                        updated[idx].material_id = e.target.value;
-                                                        setFormData({...formData, materials: updated});
-                                                    }}
-                                                >
-                                                    <option value="">Select a study material...</option>
-                                                    {materials.map(mat => (
-                                                        <option key={mat.id} value={mat.id}>{mat.title} (#{mat.id})</option>
-                                                    ))}
-                                                </select>
+                                    {formData.materials.map((m, idx) => {
+                                        const selectedMat = materials.find(mat => String(mat.id) === String(m.material_id));
+                                        const availableCount = selectedMat?.question_count ?? selectedMat?.num_questions ?? selectedMat?.total_questions ?? null;
+                                        const taken = parseInt(m.num_questions) || 0;
+                                        const isOverLimit = availableCount !== null && taken > availableCount;
+                                        return (
+                                        <div key={idx} className="animate-fade-in">
+                                            <div className="flex gap-4 items-end">
+                                                <div className="flex-1">
+                                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Select Source Study Material</label>
+                                                    <select 
+                                                        required={creationMode === 'auto'}
+                                                        className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 appearance-none shadow-sm"
+                                                        value={m.material_id}
+                                                        onChange={(e) => {
+                                                            const updated = [...formData.materials];
+                                                            updated[idx].material_id = e.target.value;
+                                                            setFormData({...formData, materials: updated});
+                                                        }}
+                                                    >
+                                                        <option value="">Select a study material...</option>
+                                                        {materials
+                                                            .filter(mat => mat.exam_type?.toUpperCase() === examType?.toUpperCase())
+                                                            .map(mat => {
+                                                                const cnt = mat.question_count ?? mat.num_questions ?? mat.total_questions;
+                                                                return (
+                                                                    <option key={mat.id} value={mat.id}>
+                                                                        {mat.title}{cnt != null ? ` — ${cnt} Questions` : ''}
+                                                                    </option>
+                                                                );
+                                                            })}
+                                                    </select>
+                                                </div>
+                                                <div className="w-36">
+                                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">
+                                                        {availableCount !== null ? `Take (max ${availableCount})` : 'Questions'}
+                                                    </label>
+                                                    <input 
+                                                        type="number" required={creationMode === 'auto'}
+                                                        min={1}
+                                                        max={availableCount ?? undefined}
+                                                        className={`w-full p-4 bg-slate-50 dark:bg-slate-800 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-colors ${
+                                                            isOverLimit
+                                                            ? 'border-red-400 dark:border-red-500 bg-red-50 dark:bg-red-900/10'
+                                                            : 'border-slate-200 dark:border-slate-700'
+                                                        }`}
+                                                        value={m.num_questions}
+                                                        onChange={(e) => {
+                                                            const updated = [...formData.materials];
+                                                            updated[idx].num_questions = e.target.value;
+                                                            setFormData({...formData, materials: updated});
+                                                        }}
+                                                    />
+                                                </div>
+                                                {formData.materials.length > 1 && (
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => {
+                                                            const updated = formData.materials.filter((_, i) => i !== idx);
+                                                            setFormData({...formData, materials: updated});
+                                                        }}
+                                                        className="p-4 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-colors"
+                                                    >
+                                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    </button>
+                                                )}
                                             </div>
-                                            <div className="w-32">
-                                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Questions</label>
-                                                <input 
-                                                    type="number" required={creationMode === 'auto'}
-                                                    className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                                                    value={m.num_questions}
-                                                    onChange={(e) => {
-                                                        const updated = [...formData.materials];
-                                                        updated[idx].num_questions = e.target.value;
-                                                        setFormData({...formData, materials: updated});
-                                                    }}
-                                                />
-                                            </div>
-                                            {formData.materials.length > 1 && (
-                                                <button 
-                                                    type="button" 
-                                                    onClick={() => {
-                                                        const updated = formData.materials.filter((_, i) => i !== idx);
-                                                        setFormData({...formData, materials: updated});
-                                                    }}
-                                                    className="p-4 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-colors"
-                                                >
-                                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                </button>
+                                            {/* Material info badge */}
+                                            {selectedMat && (
+                                                <div className={`mt-2 ml-1 flex items-center gap-3 text-[10px] font-black uppercase tracking-widest ${
+                                                    isOverLimit ? 'text-red-500' : availableCount !== null ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
+                                                }`}>
+                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full ${
+                                                        isOverLimit
+                                                        ? 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+                                                        : 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
+                                                    }`}>
+                                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
+                                                        {availableCount !== null
+                                                            ? isOverLimit
+                                                                ? `⚠ Only ${availableCount} questions available — reduce count`
+                                                                : `${availableCount} questions available · taking ${taken}`
+                                                            : `Material: ${selectedMat.title}`
+                                                        }
+                                                    </span>
+                                                </div>
                                             )}
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         ) : (
@@ -955,7 +1143,32 @@ const Exams = () => {
                         )}
                     </div>
 
-                    <div className="flex justify-end gap-4 pt-6">
+                    {/* Total Questions Summary */}
+                    {creationMode === 'auto' && (
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+                            <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Questions to Deploy</p>
+                                <p className="text-3xl font-black text-slate-800 dark:text-white mt-1">
+                                    {formData.materials.reduce((sum, m) => sum + (parseInt(m.num_questions) || 0), 0)}
+                                    <span className="text-sm font-medium text-slate-400 ml-2">questions</span>
+                                </p>
+                            </div>
+                            <div className="text-right space-y-0.5">
+                                {formData.materials.map((m, i) => {
+                                    const mat = materials.find(x => String(x.id) === String(m.material_id));
+                                    if (!mat || !m.num_questions) return null;
+                                    return (
+                                        <p key={i} className="text-xs text-slate-500">
+                                            <span className="font-bold text-slate-700 dark:text-slate-300">{mat.title.length > 30 ? mat.title.slice(0, 30) + '…' : mat.title}</span>
+                                            {' → '}<span className="font-black text-blue-500">{m.num_questions} Qns</span>
+                                        </p>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end gap-4 pt-2">
                         <button 
                             type="button" onClick={() => setView('list')}
                             className="px-8 py-3 text-slate-500 font-black tracking-widest uppercase hover:text-slate-800 dark:hover:text-white transition-colors"

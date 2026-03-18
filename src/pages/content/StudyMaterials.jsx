@@ -9,7 +9,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 
 const StudyMaterials = () => {
   const { toast } = useToast();
-  const { activeExamType } = useGlobalExam();
+  const { activeExamType, allExamTypes } = useGlobalExam();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchParam = searchParams.get('search');
 
@@ -29,7 +29,7 @@ const StudyMaterials = () => {
     language: 'tamil',
     category: '',
     subject: '',
-    exam_type: activeExamType === 'ALL' ? 'TNPSC' : activeExamType,
+    exam_type: activeExamType === 'ALL' ? (allExamTypes[0]?.slug || 'TNPSC') : activeExamType,
     toughness_level: 'medium',
     uploaded_by: 1, 
     file: null
@@ -280,11 +280,9 @@ const StudyMaterials = () => {
                 value={formData.exam_type}
                 onChange={(e) => setFormData({...formData, exam_type: e.target.value})}
               >
-                <option value="TNPSC">TNPSC General</option>
-                <option value="TNPSC_GROUP_4">TNPSC Group 4</option>
-                <option value="TNPSC_GROUP_2">TNPSC Group 2</option>
-                <option value="TET">TET</option>
-                <option value="POLICE">Police Exam</option>
+                {allExamTypes.map(t => (
+                  <option key={t.slug} value={t.slug}>{t.name}</option>
+                ))}
               </select>
             </div>
             <div>
