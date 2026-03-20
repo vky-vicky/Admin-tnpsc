@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { adminService } from '../../api/adminService';
 import Pagination from '../../components/Pagination';
 import BaseModal from '../../components/Modal';
@@ -145,10 +145,33 @@ const EXAM_TYPE_LABELS = {
 const Exams = () => {
   const { toast } = useToast();
   const { examType = 'TNPSC' } = useParams();
-  const { allExamTypes } = useGlobalExam();
+  const { activeExamType, allExamTypes, setActiveExamType, isLoading: isExamTypesLoading } = useGlobalExam();
+  const navigate = useNavigate();
   
+  // Sync global context with URL param (Sidebar/URL direct navigation)
+  useEffect(() => {
+    if (examType && activeExamType !== examType) {
+      const normActive = activeExamType?.replace(/[_\s-]/g, '').toLowerCase();
+      const normURL = examType?.replace(/[_\s-]/g, '').toLowerCase();
+      if (normActive !== normURL) {
+        setActiveExamType(examType);
+      }
+    }
+  }, [examType]);
+
+  // Sync URL param with global context (if changed via TopNavbar switcher)
+  useEffect(() => {
+    if (activeExamType && activeExamType !== 'ALL' && activeExamType !== examType) {
+      const normActive = activeExamType?.replace(/[_\s-]/g, '').toLowerCase();
+      const normURL = examType?.replace(/[_\s-]/g, '').toLowerCase();
+      if (normActive !== normURL) {
+        navigate(`/dashboard/exams/${activeExamType}`);
+      }
+    }
+  }, [activeExamType, navigate]);
+
   // Find dynamic label if available
-  const platformLabel = allExamTypes.find(t => t.slug === examType)?.name || EXAM_TYPE_LABELS[examType] || examType;
+  const platformLabel = allExamTypes.find(t => t.slug?.toLowerCase() === examType?.toLowerCase())?.name || EXAM_TYPE_LABELS[examType] || examType;
   
   const [exams, setExams] = useState([]);
   const [materials, setMaterials] = useState([]);
@@ -168,7 +191,7 @@ const Exams = () => {
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 12; // Increased from 6 for better visibility
   
   // Form State
   const [formData, setFormData] = useState({
@@ -212,11 +235,13 @@ const Exams = () => {
   const [addFromMatLoading, setAddFromMatLoading] = useState(false);
 
   useEffect(() => {
+    setCurrentPage(1);
     fetchExams();
     fetchMaterials();
-  }, [examType, examSubCategory]);
+  }, [examType, examSubCategory, isExamTypesLoading]);
 
   const fetchExams = async () => {
+    if (!examType || isExamTypesLoading) return;
     setLoading(true);
     try {
       // Use exam_type_code instead of exam_type to filter by platform (TNPSC, etc)
@@ -228,15 +253,18 @@ const Exams = () => {
       
       const examsList = Array.isArray(data) ? data : (data.data || data.exams || []);
       
-      // Filter the list to ensure we only show the selected platform code
-      // We also handle cases where the backend doesn't support filtering yet
-      const filteredResult = examsList.filter(e => 
-        (e.exam_type_code?.toUpperCase() === examType?.toUpperCase()) || 
-        (e.exam_type?.toUpperCase() === examType?.toUpperCase()) // Fallback for legacy records
-      );
+      // Filter the list with robust matching (spaces/underscores/etc)
+      const filteredResult = examsList.filter(e => {
+        const platform = e.exam_type_code || e.exam_type; 
+        if (!platform || !examType) return false;
+        
+        const normItem = platform.replace(/[_\s-]/g, '').toLowerCase();
+        const normTarget = examType.replace(/[_\s-]/g, '').toLowerCase();
+        
+        return normItem === normTarget;
+      });
       
       setExams(filteredResult);
-      setCurrentPage(1);
     } catch (err) {
       console.error("Error fetching exams:", err);
       toast.error("Fetch Error", "Failed to retrieve the exam list.");
@@ -845,7 +873,7 @@ const Exams = () => {
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex flex-col items-start gap-1">
                                     <span className={`px-3 py-1 rounded-lg text-[10px] font-black tracking-widest uppercase text-white bg-gradient-to-r ${accentGradients[accentColor]}`}>
-                                        {examSubCategory.replace('_', ' ')} • {examType}
+                                        {exam.exam_type?.replace('_', ' ')} • {exam.exam_type_code || 'N/A'}
                                     </span>
                                     <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">ID: #{exam.id}</span>
                                 </div>

@@ -21,7 +21,7 @@ const StudyMaterials = () => {
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const itemsPerPage = 20;
   
   // Form State
   const [formData, setFormData] = useState({
@@ -43,6 +43,11 @@ const StudyMaterials = () => {
     title: ''
   });
   const [deleteLoading, setDeleteLoading] = useState(false);
+  
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeExamType]);
 
   useEffect(() => {
     if (searchParam) {
@@ -54,9 +59,12 @@ const StudyMaterials = () => {
 
   // Filter and Pagination (Only for list view)
   const filteredMaterials = Array.isArray(materials) ? materials.filter(m => {
-    const matchesSearch = m.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          m.subject?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesExam = activeExamType === 'ALL' || m.exam_type === activeExamType;
+    const matchesSearch = m.title?.toLowerCase().includes(searchQuery?.toLowerCase() || '') || 
+                          m.subject?.toLowerCase().includes(searchQuery?.toLowerCase() || '') ||
+                          m.category?.toLowerCase().includes(searchQuery?.toLowerCase() || '');
+    const matchesExam = activeExamType === 'ALL' || 
+                        m.exam_type?.toLowerCase() === activeExamType?.toLowerCase() ||
+                        !m.exam_type;
     return matchesSearch && matchesExam;
   }) : [];
   
@@ -73,7 +81,7 @@ const StudyMaterials = () => {
         // Optional: you could filter grouped materials here if the API doesn't support it
         setGroupedMaterials(normalizedData);
       } else {
-        const data = await adminService.materials.listStudy({ limit: 100 });
+        const data = await adminService.materials.listStudy({ limit: 1000 });
         setMaterials(Array.isArray(data) ? data : (data.data || data.materials || []));
       }
     } catch (err) {
@@ -280,9 +288,9 @@ const StudyMaterials = () => {
                 value={formData.exam_type}
                 onChange={(e) => setFormData({...formData, exam_type: e.target.value})}
               >
-                {allExamTypes.map(t => (
+                {allExamTypes?.map(t => (
                   <option key={t.slug} value={t.slug}>{t.name}</option>
-                ))}
+                )) || <option disabled>Loading Exam Types...</option>}
               </select>
             </div>
             <div>

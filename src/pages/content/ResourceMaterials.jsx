@@ -17,14 +17,17 @@ const ResourceMaterials = () => {
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const itemsPerPage = 20;
+  
+  const [searchQuery, setSearchQuery] = useState('');
   
   const [formData, setFormData] = useState({
     title: '',
     category: '',
-    exam_type: activeExamType === 'ALL' ? (allExamTypes[0]?.slug || 'TNPSC') : activeExamType,
+    exam_type: activeExamType === 'ALL' ? (allExamTypes?.[0]?.slug || 'TNPSC') : activeExamType,
     uploaded_by: 1,
-    file: null
+    file: null,
+    toughness_level: 'medium'
   });
 
   // Delete Confirmation State
@@ -39,9 +42,19 @@ const ResourceMaterials = () => {
     fetchMaterials();
   }, []);
 
-  const filteredMaterials = Array.isArray(materials) ? materials.filter(m => 
-    activeExamType === 'ALL' || m.exam_type === activeExamType
-  ) : [];
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeExamType]);
+
+  const filteredMaterials = Array.isArray(materials) ? materials.filter(m => {
+    const matchesSearch = m.title?.toLowerCase().includes(searchQuery?.toLowerCase() || '') || 
+                          m.category?.toLowerCase().includes(searchQuery?.toLowerCase() || '');
+    const matchesExam = activeExamType === 'ALL' || 
+                        m.exam_type?.toLowerCase() === activeExamType?.toLowerCase() ||
+                        !m.exam_type;
+    return matchesSearch && matchesExam;
+  }) : [];
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -68,11 +81,12 @@ const ResourceMaterials = () => {
     data.append('exam_type', formData.exam_type);
     data.append('uploaded_by', formData.uploaded_by);
     data.append('file', formData.file);
+    data.append('toughness_level', formData.toughness_level);
 
     try {
       await adminService.materials.createResource(data);
       toast.success('Resource Uploaded', 'The material is now available for download in the general category.');
-      setFormData({ title: '', category: '', exam_type: activeExamType === 'ALL' ? 'TNPSC' : activeExamType, uploaded_by: 1, file: null });
+      setFormData({ title: '', category: '', exam_type: activeExamType === 'ALL' ? 'TNPSC' : activeExamType, uploaded_by: 1, file: null, toughness_level: 'medium' });
       setView('list');
       fetchMaterials();
     } catch (err) {
@@ -155,9 +169,21 @@ const ResourceMaterials = () => {
                 value={formData.exam_type}
                 onChange={(e) => setFormData({...formData, exam_type: e.target.value})}
               >
-                {allExamTypes.map(t => (
+                {allExamTypes?.map(t => (
                   <option key={t.slug} value={t.slug}>{t.name}</option>
-                ))}
+                )) || <option disabled>Loading Exam Types...</option>}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Toughness Level</label>
+              <select 
+                className="w-full p-3 bg-slate-900 text-white border border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-orange-500 appearance-none"
+                value={formData.toughness_level}
+                onChange={(e) => setFormData({...formData, toughness_level: e.target.value})}
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
               </select>
             </div>
             <div>
@@ -181,6 +207,25 @@ const ResourceMaterials = () => {
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+          {/* Search Header */}
+          <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex flex-wrap items-center justify-between gap-4">
+            <div className="relative flex-1 min-w-[300px]">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              </span>
+              <input 
+                type="text" 
+                placeholder="Search resources by title or category..." 
+                className="w-full pl-12 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-slate-700 dark:text-slate-200"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="text-sm font-medium text-slate-500">
+              Showing {currentMaterials.length} of {filteredMaterials.length} results
+            </div>
+          </div>
+
           <table className="w-full text-left">
             <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 uppercase text-xs font-bold tracking-wider">
               <tr>
@@ -227,7 +272,7 @@ const ResourceMaterials = () => {
           {view === 'list' && (
             <div className="p-4 border-t border-slate-200 dark:border-slate-700">
                <Pagination 
-                 totalItems={materials.length}
+                 totalItems={filteredMaterials.length}
                  itemsPerPage={itemsPerPage}
                  currentPage={currentPage}
                  onPageChange={setCurrentPage}
