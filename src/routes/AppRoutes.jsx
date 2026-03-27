@@ -15,6 +15,7 @@ import ExamsReview from '../pages/content/ExamsReview';
 import ModerationDashboard from '../pages/moderation/ModerationDashboard';
 import ErrorLogs from '../pages/content/ErrorLogs';
 import QuestionReports from '../pages/content/QuestionReports';
+import ActivityLogs from '../pages/content/ActivityLogs';
 import DashboardLayout from '../layouts/DashboardLayout';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { GlobalExamProvider } from '../context/GlobalExamContext';
@@ -41,6 +42,7 @@ const AppRoutes = () => {
         <Route path="moderation" element={<ModerationDashboard />} />
         <Route path="error-logs" element={<ErrorLogs />} />
         <Route path="question-reports" element={<QuestionReports />} />
+        <Route path="activity-logs" element={<ActivityLogs />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Route>

@@ -318,7 +318,15 @@ const TopNavbar = ({ onToggleSidebar, onToggleTheme, isDark }) => {
                       )}
                   </div>
                   <div className="p-2 border-t border-slate-100 dark:border-slate-700 text-center">
-                    <button className="text-xs font-bold text-blue-500 hover:text-blue-600">View All</button>
+                    <button 
+                      onClick={() => {
+                        navigate('/dashboard/notifications');
+                        setShowNotifications(false);
+                      }}
+                      className="text-xs font-bold text-blue-500 hover:text-blue-600 cursor-pointer"
+                    >
+                      View All
+                    </button>
                   </div>
               </div>
             )}

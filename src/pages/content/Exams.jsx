@@ -150,7 +150,7 @@ const Exams = () => {
   
   // Sync global context with URL param (Sidebar/URL direct navigation)
   useEffect(() => {
-    if (examType && activeExamType !== examType) {
+    if (examType) {
       const normActive = activeExamType?.replace(/[_\s-]/g, '').toLowerCase();
       const normURL = examType?.replace(/[_\s-]/g, '').toLowerCase();
       if (normActive !== normURL) {
@@ -161,14 +161,14 @@ const Exams = () => {
 
   // Sync URL param with global context (if changed via TopNavbar switcher)
   useEffect(() => {
-    if (activeExamType && activeExamType !== 'ALL' && activeExamType !== examType) {
+    if (activeExamType && activeExamType !== 'ALL') {
       const normActive = activeExamType?.replace(/[_\s-]/g, '').toLowerCase();
       const normURL = examType?.replace(/[_\s-]/g, '').toLowerCase();
       if (normActive !== normURL) {
         navigate(`/dashboard/exams/${activeExamType}`);
       }
     }
-  }, [activeExamType, navigate]);
+  }, [activeExamType]);
 
   // Find dynamic label if available
   const platformLabel = allExamTypes.find(t => t.slug?.toLowerCase() === examType?.toLowerCase())?.name || EXAM_TYPE_LABELS[examType] || examType;
@@ -237,16 +237,24 @@ const Exams = () => {
   useEffect(() => {
     setCurrentPage(1);
     fetchExams();
-    fetchMaterials();
   }, [examType, examSubCategory, isExamTypesLoading]);
+
+  // Fetch materials only when needed (Create mode or Management mode)
+  useEffect(() => {
+    if (view === 'create' || managementExam) {
+      fetchMaterials();
+    }
+  }, [view, managementExam]);
 
   const fetchExams = async () => {
     if (!examType || isExamTypesLoading) return;
     setLoading(true);
     try {
-      // Use exam_type_code instead of exam_type to filter by platform (TNPSC, etc)
+      // Use activeExamType for consistency if it matches normalized URL
+      const targetType = examType || activeExamType;
+      
       const data = await adminService.manageExams.listReal({ 
-        exam_type_code: examType, 
+        exam_type_code: targetType, 
         exam_type: examSubCategory,
         limit: 1000 
       });

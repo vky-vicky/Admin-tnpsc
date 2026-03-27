@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../api/adminService';
 import { useToast } from '../../context/ToastContext';
+import { useGlobalExam } from '../../context/GlobalExamContext';
 import ConfirmModal from '../../components/ConfirmModal';
 
 const Notifications = () => {
+  const { allExamTypes } = useGlobalExam();
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('list'); // 'list', 'broadcast', 'exam-notify'
@@ -132,6 +134,19 @@ const Notifications = () => {
               <input type="text" required className="w-full p-3 bg-slate-900 text-white border border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={broadcast.title} onChange={(e) => setBroadcast({...broadcast, title: e.target.value})} placeholder="e.g. New Feature Update" />
             </div>
             <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Target Audience</label>
+              <select 
+                className="w-full p-3 bg-slate-900 text-white border border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                value={broadcast.target}
+                onChange={(e) => setBroadcast({...broadcast, target: e.target.value})}
+              >
+                <option value="all">All Users</option>
+                {allExamTypes?.map(t => (
+                  <option key={t.slug} value={t.slug}>{t.name} Users</option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Message Body</label>
               <textarea required rows="4" className="w-full p-3 bg-slate-900 text-white border border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={broadcast.message} onChange={(e) => setBroadcast({...broadcast, message: e.target.value})} placeholder="Type your message here..." />
             </div>
@@ -153,8 +168,18 @@ const Notifications = () => {
               <input type="datetime-local" required className="w-full p-3 bg-slate-900 text-white border border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={examNotify.exam_date} onChange={(e) => setExamNotify({...examNotify, exam_date: e.target.value})} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Type Slug</label>
-              <input type="text" required className="w-full p-3 bg-slate-900 text-white border border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={examNotify.exam_type_slug} onChange={(e) => setExamNotify({...examNotify, exam_type_slug: e.target.value})} placeholder="e.g. group-4" />
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Exam Type</label>
+              <select 
+                required
+                className="w-full p-3 bg-slate-900 text-white border border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                value={examNotify.exam_type_slug}
+                onChange={(e) => setExamNotify({...examNotify, exam_type_slug: e.target.value})}
+              >
+                <option value="" disabled>Select Type</option>
+                {allExamTypes?.map(t => (
+                  <option key={t.slug} value={t.slug}>{t.name}</option>
+                ))}
+              </select>
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>

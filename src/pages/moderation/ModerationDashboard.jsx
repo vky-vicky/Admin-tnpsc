@@ -8,17 +8,19 @@ const ModerationDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('PENDING');
   const [filterType, setFilterType] = useState('');
+  const [filterCommunityType, setFilterCommunityType] = useState('');
   const [selectedReport, setSelectedReport] = useState(null);
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
   const [actionData, setActionData] = useState({
     action: 'IGNORE',
     ban_reason: '',
-    warning_message: ''
+    warning_message: '',
+    reporter_message: 'Thanks for your report. After review, this content does not violate our guidelines.'
   });
 
   useEffect(() => {
     fetchReports();
-  }, [filterStatus, filterType]);
+  }, [filterStatus, filterType, filterCommunityType]);
 
   const fetchReports = async () => {
     try {
@@ -26,13 +28,15 @@ const ModerationDashboard = () => {
       const params = {};
       if (filterStatus) params.status = filterStatus;
       if (filterType) params.content_type = filterType;
+      if (filterCommunityType) params.community_type = filterCommunityType;
       
       const data = await reportService.getReports(params);
       // The axios interceptor already returns response.data, so data is the array itself
       setReports(Array.isArray(data) ? data : (data.data || []));
     } catch (error) {
       console.error('Failed to fetch reports:', error);
-      toast.error('Failed to load reports', 'The server could not retrieve the report list.');
+      const errorDetail = error.response?.data?.detail || error.message || 'The server could not retrieve the report list.';
+      toast.error('Failed to load reports', errorDetail);
     } finally {
       setLoading(false);
     }
@@ -46,6 +50,7 @@ const ModerationDashboard = () => {
       const data = { action: actionData.action };
       if (actionData.action === 'BAN_USER') data.ban_reason = actionData.ban_reason;
       if (actionData.action === 'WARN_USER') data.warning_message = actionData.warning_message;
+      if (actionData.action === 'IGNORE') data.reporter_message = actionData.reporter_message;
       
       await reportService.takeAction(selectedReport.id, data);
       toast.success('Action Applied', `Moderation rule ${actionData.action} has been successfully applied.`);
@@ -54,7 +59,8 @@ const ModerationDashboard = () => {
       fetchReports();
     } catch (error) {
       console.error('Action failed:', error);
-      toast.error('Action Failed', 'An error occurred while trying to apply the moderation action.');
+      const errorDetail = error.response?.data?.detail || error.message || 'An error occurred while trying to apply the moderation action.';
+      toast.error('Action Failed', errorDetail);
     } finally {
       setLoading(false);
     }
@@ -71,12 +77,17 @@ const ModerationDashboard = () => {
 
   const formatDate = (dateStr) => {
     try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-US', { 
+      // Ensure UTC string is treated as UTC by adding 'Z' if missing and no timezone info exists
+      const utcStr = (typeof dateStr === 'string' && !dateStr.includes('Z') && !dateStr.includes('+')) 
+        ? `${dateStr}Z` 
+        : dateStr;
+      const date = new Date(utcStr);
+      return date.toLocaleTimeString('en-IN', { 
         month: 'short', 
         day: 'numeric', 
         hour: '2-digit', 
-        minute: '2-digit' 
+        minute: '2-digit',
+        hour12: true
       });
     } catch (e) {
       return dateStr;
@@ -93,6 +104,8 @@ const ModerationDashboard = () => {
           content_type: report.content_type,
           content_owner: report.content_owner,
           content_preview: report.content_preview,
+          content_title: report.content_title,
+          community_type: report.community_type,
           status: report.status,
           created_at: report.created_at, // Latest one
           reports: [],
@@ -158,6 +171,22 @@ const ModerationDashboard = () => {
               ALL
             </button>
           </div>
+
+          <div className="flex bg-slate-800 rounded-xl p-1 border border-slate-700">
+            {['', 'TNPSC Group 2', 'TNPSC Group 4'].map((type) => (
+              <button
+                key={type}
+                onClick={() => setFilterCommunityType(type)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  filterCommunityType === type 
+                    ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {type || 'ALL GROUPS'}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -199,19 +228,29 @@ const ModerationDashboard = () => {
 
               {/* Main Preview Area */}
               <div className="p-6 flex-1 flex flex-col gap-5">
-                <div className="space-y-3">
-                   <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-500/10 px-2 py-0.5 rounded-md">{group.content_type} #{group.content_id}</span>
-                      <span className="text-slate-600 font-bold">•</span>
-                      <span className="text-xs text-white font-bold opacity-70">By {group.content_owner}</span>
-                   </div>
-                   <div className="relative group/content">
-                      <div className="absolute -left-2 top-0 bottom-0 w-1 bg-rose-500/20 rounded-full group-hover/content:bg-rose-500/50 transition-colors"></div>
-                      <p className="text-slate-300 text-sm italic font-medium leading-relaxed pl-3 line-clamp-4">
-                        "{group.content_preview}"
-                      </p>
-                   </div>
-                </div>
+                 <div className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                       <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-500/10 px-2 py-0.5 rounded-md">{group.content_type} #{group.content_id}</span>
+                       {group.community_type && (
+                         <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
+                           group.community_type.includes('2') ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-teal-500/20 text-teal-400 border border-teal-500/30'
+                         }`}>
+                           {group.community_type}
+                         </span>
+                       )}
+                       <span className="text-slate-600 font-bold">•</span>
+                       <span className="text-xs text-white font-bold opacity-70">By {group.content_owner}</span>
+                    </div>
+                    {group.content_title && (
+                      <h3 className="text-white font-bold text-sm line-clamp-1">{group.content_title}</h3>
+                    )}
+                    <div className="relative group/content">
+                       <div className="absolute -left-2 top-0 bottom-0 w-1 bg-rose-500/20 rounded-full group-hover/content:bg-rose-500/50 transition-colors"></div>
+                       <p className="text-slate-300 text-sm italic font-medium leading-relaxed pl-3 line-clamp-4">
+                         "{group.content_preview}"
+                       </p>
+                    </div>
+                 </div>
 
                 <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-700/50">
                   <p className="text-[10px] text-slate-500 uppercase font-black tracking-tighter mb-2 opacity-60">Violation Summary</p>
@@ -246,7 +285,7 @@ const ModerationDashboard = () => {
                     }}
                     className="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs py-3 rounded-2xl font-bold transition-all border border-slate-600 shadow-xl cursor-pointer"
                   >
-                    Dismiss All
+                    {group.reports.length > 1 ? 'Dismiss All' : 'Dismiss'}
                   </button>
                   <button 
                      onClick={() => {
@@ -275,10 +314,15 @@ const ModerationDashboard = () => {
                  <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center border border-rose-500/20">
                     <svg className="w-6 h-6 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                  </div>
-                 <div>
-                    <h2 className="text-xl font-bold text-white">Moderate Content</h2>
-                    <p className="text-xs text-slate-500 font-medium">Select an action for this report</p>
-                 </div>
+                  <div>
+                     <h2 className="text-xl font-bold text-white">Moderate Content</h2>
+                     <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-xs text-slate-500 font-medium">{selectedReport?.content_type} #{selectedReport?.content_id} by {selectedReport?.content_owner}</p>
+                        {selectedReport?.community_type && (
+                          <span className="text-[10px] font-black bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded uppercase">{selectedReport.community_type}</span>
+                        )}
+                     </div>
+                  </div>
               </div>
               <button onClick={() => setIsActionModalOpen(false)} className="text-slate-400 hover:text-white transition-colors bg-slate-800 p-2 rounded-xl">
                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -295,7 +339,18 @@ const ModerationDashboard = () => {
                   ].map((act) => (
                     <button
                       key={act.id}
-                      onClick={() => setActionData({ ...actionData, action: act.id })}
+                      onClick={() => {
+                        const newData = { ...actionData, action: act.id };
+                        
+                        // Auto-fill warning template if switching to WARN_USER and message is empty
+                        if (act.id === 'WARN_USER' && !actionData.warning_message) {
+                          const postTitle = selectedReport?.content_preview || 'your post';
+                          const template = `வணக்கம் 😊,\n\n"${postTitle}" என்ற உங்கள் post-ஐ நாங்கள் பரிசீலித்தோம்.\n\nஇது எங்கள் community guidelines-க்கு முழுமையாக பொருந்தாமல் இருக்கலாம் (எ.கா: spam / copyright போன்ற காரணங்கள்).\n\nதயவுசெய்து இதைப் பரிசீலித்து, எதிர்காலத்தில் கவனமாக post செய்யவும் 🙏\n\nஇது ஒரு friendly reminder தான் 👍`;
+                          newData.warning_message = template;
+                        }
+                        
+                        setActionData(newData);
+                      }}
                       className={`flex flex-col gap-1 p-4 rounded-2xl border text-left transition-all duration-300 ${
                         actionData.action === act.id
                           ? 'bg-white/5 border-rose-500/50 ring-4 ring-rose-500/10'
@@ -331,6 +386,19 @@ const ModerationDashboard = () => {
                     className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-white text-sm focus:border-rose-500/50 outline-none transition-all h-28 resize-none shadow-inner"
                     placeholder="Official reason for the user suspension..."
                   />
+                </div>
+              )}
+
+              {actionData.action === 'IGNORE' && (
+                <div className="space-y-3">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Message to Reporter</label>
+                  <textarea 
+                    value={actionData.reporter_message}
+                    onChange={(e) => setActionData({ ...actionData, reporter_message: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-white text-sm focus:border-rose-500/50 outline-none transition-all h-28 resize-none shadow-inner"
+                    placeholder="Provide context for the resolution..."
+                  />
+                  <p className="text-[10px] text-slate-500 font-bold px-1 italic">This message will be sent to all users who reported this content.</p>
                 </div>
               )}
 

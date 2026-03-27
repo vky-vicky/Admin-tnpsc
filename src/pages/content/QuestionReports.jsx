@@ -8,6 +8,7 @@ const QuestionReports = () => {
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState('PENDING'); // PENDING, RESOLVED, REJECTED
+    const [filterCommunityType, setFilterCommunityType] = useState(''); // TNPSC Group 2, TNPSC Group 4
     const [editModal, setEditModal] = useState({
         isOpen: false,
         questionId: null,
@@ -32,14 +33,19 @@ const QuestionReports = () => {
     const fetchReports = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await adminService.manageExams.getQuestionReports(filterStatus || undefined);
+            const params = {};
+            if (filterStatus) params.status = filterStatus;
+            if (filterCommunityType) params.community_type = filterCommunityType;
+            
+            const data = await adminService.manageExams.getQuestionReports(params);
             setReports(Array.isArray(data) ? data : (data.data || []));
         } catch (err) {
-            toast.error('Fetch Failed', 'Could not retrieve question reports.');
+            const errorDetail = err.response?.data?.detail || err.message || 'Could not retrieve question reports.';
+            toast.error('Fetch Failed', errorDetail);
         } finally {
             setLoading(false);
         }
-    }, [filterStatus, toast]);
+    }, [filterStatus, filterCommunityType, toast]);
 
     useEffect(() => {
         fetchReports();
@@ -52,7 +58,8 @@ const QuestionReports = () => {
             toast.success('Success', `Report ${action === 'RESOLVE' ? 'resolved' : 'rejected'} successfully.`);
             fetchReports();
         } catch (err) {
-            toast.error('Action Failed', 'Could not process the report action.');
+            const errorDetail = err.response?.data?.detail || err.message || 'Could not process the report action.';
+            toast.error('Action Failed', errorDetail);
         } finally {
             setActionModal({ ...actionModal, isOpen: false });
         }
@@ -77,7 +84,8 @@ const QuestionReports = () => {
                 }
             });
         } catch (err) {
-            toast.error('Load Error', 'Could not fetch question details.');
+            const errorDetail = err.response?.data?.detail || err.message || 'Could not fetch question details.';
+            toast.error('Load Error', errorDetail);
         } finally {
             setEditLoading(false);
         }
@@ -92,7 +100,8 @@ const QuestionReports = () => {
             setEditModal({ ...editModal, isOpen: false });
             fetchReports(); // Refresh to see updated text if visible
         } catch (err) {
-            toast.error('Update Failed', 'Could not save question changes.');
+            const errorDetail = err.response?.data?.detail || err.message || 'Could not save question changes.';
+            toast.error('Update Failed', errorDetail);
         } finally {
             setEditLoading(false);
         }
@@ -119,26 +128,44 @@ const QuestionReports = () => {
                         Manage user-submitted reports about incorrect or problematic questions.
                     </p>
                 </div>
-                <div className="flex items-center gap-3 bg-white dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                    {['PENDING', 'RESOLVED', 'REJECTED'].map((status) => (
+                <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                        {['', 'TNPSC Group 4'].map((type) => (
+                            <button
+                                key={type}
+                                onClick={() => setFilterCommunityType(type)}
+                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                                    filterCommunityType === type 
+                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' 
+                                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                                }`}
+                            >
+                                {type || 'ALL GROUPS'}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex items-center gap-3 bg-white dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                        {['PENDING', 'RESOLVED', 'REJECTED'].map((status) => (
+                            <button
+                                key={status}
+                                onClick={() => setFilterStatus(status)}
+                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                                    filterStatus === status 
+                                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-lg' 
+                                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                                }`}
+                            >
+                                {status}
+                            </button>
+                        ))}
                         <button
-                            key={status}
-                            onClick={() => setFilterStatus(status)}
-                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                                filterStatus === status 
-                                ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-lg' 
-                                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-                            }`}
+                            onClick={fetchReports}
+                            className="p-2 text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all ml-2"
                         >
-                            {status}
+                            <svg className={`w-5 h-5 ${loading || editLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                         </button>
-                    ))}
-                    <button
-                        onClick={fetchReports}
-                        className="p-2 text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all ml-2"
-                    >
-                        <svg className={`w-5 h-5 ${loading || editLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    </button>
+                    </div>
                 </div>
             </div>
 
@@ -188,8 +215,15 @@ const QuestionReports = () => {
                                         </td>
                                         <td className="px-8 py-6 max-w-md">
                                             <div className="space-y-1.5">
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex flex-wrap items-center gap-2">
                                                     <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded text-[9px] font-black tracking-widest uppercase">ID: {report.question_id}</span>
+                                                    {report.community_type && (
+                                                       <span className={`px-2 py-0.5 rounded text-[9px] font-black tracking-widest uppercase ${
+                                                         report.community_type.includes('2') ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400'
+                                                       }`}>
+                                                         {report.community_type}
+                                                       </span>
+                                                    )}
                                                 </div>
                                                 <div className="text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed line-clamp-2 italic" title={report.question_text}>
                                                     "{report.question_text}"

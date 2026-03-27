@@ -61,8 +61,8 @@ export const adminService = {
     getQuestionDetail: (id) => api.get(`/admin/questions/${id}`),
     updateQuestion: (id, data) => api.post(`/admin/question-update/${id}`, data),
     deleteQuestion: (id) => api.delete(`/admin/questions/${id}`),
-    getQuestionReports: (status) =>
-      api.get("/questions/reports", { params: { status } }),
+    getQuestionReports: (params = {}) =>
+      api.get("/questions/reports", { params }),
     actionQuestionReport: (id, action) =>
       api.post(`/questions/reports/${id}/action`, { action }),
 

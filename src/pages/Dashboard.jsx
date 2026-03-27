@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { adminService } from '../api/adminService';
 import { analyticsService } from '../api/analyticsService';
 import StatCard from '../components/StatCard';
@@ -6,6 +7,7 @@ import { useToast } from '../context/ToastContext';
 import { useGlobalExam } from '../context/GlobalExamContext';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { activeExamType } = useGlobalExam();
   const [stats, setStats] = useState({
@@ -16,6 +18,7 @@ const Dashboard = () => {
   });
   const [activities, setActivities] = useState([]);
   const [reports, setReports] = useState([]);
+  const [questionReports, setQuestionReports] = useState([]);
   const [upcomingExams, setUpcomingExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [proficiency, setProficiency] = useState([]);
@@ -26,7 +29,7 @@ const Dashboard = () => {
     setLoading(true);
     try {
       // Fetch all data with individual fallback catching to prevent global failure
-      const [usersRes, materialsRes, resourcesRes, realExamsRes, mockExamsRes, activityRes, reportsRes, upcomingRes, analyticsRes, proficiencyRes, toughnessRes, performanceRes] = await Promise.all([
+      const [usersRes, materialsRes, resourcesRes, realExamsRes, mockExamsRes, activityRes, reportsRes, questionReportsRes, upcomingRes, analyticsRes, proficiencyRes, toughnessRes, performanceRes] = await Promise.all([
         adminService.getUsers().catch(err => { toast.error("Users fetch failed"); return []; }),
         adminService.materials.listStudy().catch(err => { toast.error("Materials fetch failed"); return []; }),
         adminService.materials.listResource().catch(err => { toast.error("Resources fetch failed"); return []; }),
@@ -34,6 +37,7 @@ const Dashboard = () => {
         adminService.manageExams.listReal({ exam_type: 'MOCK_EXAM', limit: 1000 }).catch(err => { toast.error("Mock Exams fetch failed"); return []; }),
         adminService.getRecentActivity(5).catch(err => { toast.error("Activity fetch failed"); return []; }),
         adminService.getReports ? adminService.getReports({ status: 'PENDING' }).catch(err => []) : Promise.resolve([]),
+        adminService.manageExams.getQuestionReports ? adminService.manageExams.getQuestionReports({ status: 'PENDING' }).catch(err => []) : Promise.resolve([]),
         adminService.manageExams.listUpcoming().catch(err => []),
         analyticsService.getDashboardStats().catch(() => null),
         analyticsService.getSubjectProficiency().catch(() => []),
@@ -90,6 +94,7 @@ const Dashboard = () => {
 
       setActivities(activityList);
       setReports(getFullList(reportsRes));
+      setQuestionReports(getFullList(questionReportsRes));
       setUpcomingExams(upcomingFiltered.slice(0, 3));
       
       if (analyticsRes) {
@@ -184,7 +189,12 @@ const Dashboard = () => {
         <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
           <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
              <h3 className="font-bold text-lg text-slate-800 dark:text-white">Recent Activity</h3>
-             <button className="text-sm text-blue-500 font-medium hover:underline">View All</button>
+              <button 
+                onClick={() => navigate('/dashboard/activity-logs')}
+                className="text-sm text-blue-500 font-medium hover:underline"
+              >
+                View All
+              </button>
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-700">
             {activities.length === 0 ? (
@@ -231,6 +241,25 @@ const Dashboard = () => {
             </div>
             <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
             <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-purple-500/30 rounded-full blur-2xl"></div>
+          </div>
+
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-xl shadow-blue-500/20 relative overflow-hidden">
+            <div className="relative z-10">
+              <h3 className="text-lg font-bold mb-1">Question Reports</h3>
+              <p className="text-blue-100 text-sm mb-4">Reported errors in questions</p>
+              <div className="flex items-center gap-2 mb-2">
+                 <span className="text-4xl font-bold">{questionReports.length}</span>
+                 <span className="text-blue-200 text-sm">items</span>
+              </div>
+              <button 
+                onClick={() => window.location.hash = '#/dashboard/question-reports'}
+                className="w-full py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-semibold backdrop-blur-sm transition-colors text-center"
+              >
+                Review Reports
+              </button>
+            </div>
+            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+            <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-indigo-500/30 rounded-full blur-2xl"></div>
           </div>
 
           {/* Subject Proficiency */}

@@ -199,6 +199,7 @@ const UsersList = () => {
                   {user.created_at ? new Date(user.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
                 </td>
                 <td className="px-6 py-4 text-right space-x-4">
+                  {/* 
                   {!user.is_banned ? (
                     <button 
                       onClick={(e) => openModerationModal(user, 'BAN', e)}
@@ -213,7 +214,8 @@ const UsersList = () => {
                     >
                       Unban
                     </button>
-                  )}
+                  )} 
+                  */}
                   <button 
                      onClick={(e) => { e.stopPropagation(); openDeleteModal(user.id, user.name); }}
                      className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm font-semibold transition-colors"
@@ -386,6 +388,7 @@ const UsersList = () => {
                 </div>
 
                 <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-4">
+                  {/* 
                   {!detailsModal.data.is_banned ? (
                     <button 
                       onClick={(e) => openModerationModal(detailsModal.data, 'BAN', e)}
@@ -400,7 +403,8 @@ const UsersList = () => {
                     >
                       Restore Access
                     </button>
-                  )}
+                  )} 
+                  */}
                   <button 
                     onClick={() => openDeleteModal(detailsModal.data.id, detailsModal.data.name)}
                     className="px-6 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 font-bold rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 transition-all"
